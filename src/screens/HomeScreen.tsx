@@ -2,17 +2,17 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, RefreshControl,
 } from 'react-native';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, router } from 'expo-router';
 import { Routine, AppSettings, Exercise } from '../types';
 import {
   loadRoutine, loadSettings, saveRoutine, checkAndResetIfNewDay,
   loadTrainingDates, saveTrainingDate,
 } from '../utils/storage';
 import { theme } from '../constants/theme';
-import ExerciseCard from '../components/ExerciseCard';
 import TimerModal from '../components/TimerModal';
 import CalendarModal from '../components/CalendarModal';
 import AddExerciseModal from '../components/AddExerciseModal';
+import DraggableExerciseList from '../components/DraggableExerciseList';
 
 export default function HomeScreen() {
   const [routine, setRoutine] = useState<Routine | null>(null);
@@ -104,6 +104,22 @@ export default function HomeScreen() {
     persistRoutine(updated);
   };
 
+  const reorderExercise = (sectionIdx: number, fromIdx: number, toIdx: number) => {
+    if (!routine) return;
+    const updated: Routine = {
+      ...routine,
+      sections: routine.sections.map((section, si) => {
+        if (si !== sectionIdx) return section;
+        const exercises = [...section.exercises];
+        const [moved] = exercises.splice(fromIdx, 1);
+        exercises.splice(toIdx, 0, moved);
+        return { ...section, exercises };
+      }),
+    };
+    setRoutine(updated);
+    persistRoutine(updated);
+  };
+
   const addExercise = (sectionIdx: number, exercise: Exercise) => {
     if (!routine) return;
     const updated: Routine = {
@@ -148,10 +164,13 @@ export default function HomeScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <View>
+        <View style={{ flex: 1 }}>
           <Text style={styles.title}>{routine.name}</Text>
           <Text style={styles.subtitle}>{routine.frequency}</Text>
         </View>
+        <TouchableOpacity style={styles.newRoutineBtn} onPress={() => router.push('/input')}>
+          <Text style={styles.newRoutineText}>Nueva rutina</Text>
+        </TouchableOpacity>
         <View style={styles.progressBadge}>
           <Text style={styles.progressText}>{done}/{total}</Text>
           <Text style={styles.progressLabel}>series</Text>
@@ -173,18 +192,17 @@ export default function HomeScreen() {
         {routine.sections.map((section, si) => (
           <View key={si} style={styles.section}>
             <Text style={styles.sectionName}>{section.name.toUpperCase()}</Text>
-            {section.exercises.map((exercise, ei) => (
-              <ExerciseCard
-                key={exercise.id}
-                exercise={exercise}
-                editable={settings.editableFields}
-                vibrationOnCheck={settings.vibrationOnCheck}
-                autoStartTimer={settings.autoStartTimerOnCheck}
-                onToggleSeries={(si2) => toggleSeries(si, ei, si2)}
-                onEdit={(field, value) => editExerciseField(si, ei, field as string, value)}
-                onTimerStart={startTimer}
-              />
-            ))}
+            <DraggableExerciseList
+              section={section}
+              sectionIdx={si}
+              editable={settings.editableFields}
+              vibrationOnCheck={settings.vibrationOnCheck}
+              autoStartTimer={settings.autoStartTimerOnCheck}
+              onToggleSeries={(ei, si2) => toggleSeries(si, ei, si2)}
+              onEdit={(ei, field, value) => editExerciseField(si, ei, field, value)}
+              onTimerStart={startTimer}
+              onReorder={(from, to) => reorderExercise(si, from, to)}
+            />
           </View>
         ))}
 
@@ -238,6 +256,19 @@ const styles = StyleSheet.create({
   },
   title: { color: theme.textColor, fontSize: theme.fontSize.title, fontWeight: '700' },
   subtitle: { color: theme.textMuted, fontSize: theme.fontSize.small, marginTop: 2 },
+  newRoutineBtn: {
+    borderWidth: 1,
+    borderColor: theme.borderColor,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    marginRight: 10,
+  },
+  newRoutineText: {
+    color: theme.textMuted,
+    fontSize: 12,
+    fontWeight: '600',
+  },
   progressBadge: {
     alignItems: 'center', backgroundColor: theme.cardBackground,
     borderRadius: 12, paddingHorizontal: 16, paddingVertical: 8,
