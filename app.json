@@ -28,7 +28,9 @@
     "scheme": "mirutina",
     "web": {
       "bundler": "metro",
-      "output": "static",
+      "output": "static"
+    },
+    "experiments": {
       "baseUrl": "/mi-rutina"
     }
   }
