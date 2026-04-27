@@ -25,6 +25,11 @@
     "plugins": [
       "expo-router"
     ],
-    "scheme": "mirutina"
+    "scheme": "mirutina",
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "baseUrl": "/mi-rutina"
+    }
   }
 }
