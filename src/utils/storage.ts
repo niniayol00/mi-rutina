@@ -6,7 +6,7 @@ const ROUTINE_KEY = 'mi_rutina_routine';
 const SETTINGS_KEY = 'mi_rutina_settings';
 const DATA_VERSION_KEY = 'mi_rutina_version';
 const TRAINING_DATES_KEY = 'mi_rutina_training_dates';
-const CURRENT_VERSION = '3';
+const CURRENT_VERSION = '4';
 
 export const defaultSettings: AppSettings = {
   autoStartTimerOnCheck: true,

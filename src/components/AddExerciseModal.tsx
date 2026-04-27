@@ -25,16 +25,32 @@ export default function AddExerciseModal({ visible, sections, onAdd, onClose }: 
   const [restSeconds, setRestSeconds] = useState('30');
   const [workSeconds, setWorkSeconds] = useState('');
   const [sectionIdx, setSectionIdx] = useState(0);
-  const [error, setError] = useState('');
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const validate = () => {
+    const e: Record<string, string> = {};
+    if (!name.trim() || name.trim().length < 2) e.name = 'Mínimo 2 caracteres';
+    if (name.trim().length > 100) e.name = 'Máximo 100 caracteres';
+    const s = parseInt(series);
+    if (isNaN(s) || s < 1) e.series = 'Mínimo 1';
+    if (s > 20) e.series = 'Máximo 20';
+    const r = parseInt(reps);
+    if (reps && (isNaN(r) || r < 1)) e.reps = 'Mínimo 1';
+    if (r > 100) e.reps = 'Máximo 100';
+    const rest = parseInt(restSeconds);
+    if (!isNaN(rest) && (rest < 0 || rest > 600)) e.rest = 'Entre 0 y 600 seg';
+    return e;
+  };
 
   const reset = () => {
-    setName(''); setSeries('3'); setReps('12');
-    setWeight(''); setRestSeconds('30'); setWorkSeconds('');
-    setSectionIdx(0); setError('');
+    setName(''); setSeries('1'); setReps('10');
+    setWeight(''); setRestSeconds('60'); setWorkSeconds('');
+    setSectionIdx(0); setErrors({});
   };
 
   const handleAdd = () => {
-    if (!name.trim()) { setError('El nombre es obligatorio'); return; }
+    const e = validate();
+    if (Object.keys(e).length > 0) { setErrors(e); return; }
     const seriesNum = parseInt(series) || 1;
     const exercise: Exercise = {
       id: generateId(),
@@ -83,34 +99,36 @@ export default function AddExerciseModal({ visible, sections, onAdd, onClose }: 
 
             <Text style={styles.label}>Nombre *</Text>
             <TextInput
-              style={[styles.input, error && !name.trim() && styles.inputError]}
+              style={[styles.input, errors.name && styles.inputError]}
               value={name}
-              onChangeText={(v) => { setName(v); setError(''); }}
+              onChangeText={(v) => { setName(v); setErrors((p) => ({ ...p, name: '' })); }}
               placeholder="ej: Sentadillas"
               placeholderTextColor={theme.textMuted}
             />
-            {error ? <Text style={styles.errorText}>{error}</Text> : null}
+            {errors.name ? <Text style={styles.errorText}>{errors.name}</Text> : null}
 
             <View style={styles.row}>
               <View style={styles.half}>
-                <Text style={styles.label}>Series</Text>
+                <Text style={styles.label}>Series (1-20) *</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, errors.series && styles.inputError]}
                   value={series}
-                  onChangeText={setSeries}
-                  placeholder="3"
+                  onChangeText={(v) => { setSeries(v); setErrors((p) => ({ ...p, series: '' })); }}
+                  placeholder="1"
                   placeholderTextColor={theme.textMuted}
                 />
+                {errors.series ? <Text style={styles.errorText}>{errors.series}</Text> : null}
               </View>
               <View style={styles.half}>
-                <Text style={styles.label}>Repeticiones</Text>
+                <Text style={styles.label}>Repeticiones (1-100)</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, errors.reps && styles.inputError]}
                   value={reps}
-                  onChangeText={setReps}
-                  placeholder="12"
+                  onChangeText={(v) => { setReps(v); setErrors((p) => ({ ...p, reps: '' })); }}
+                  placeholder="10"
                   placeholderTextColor={theme.textMuted}
                 />
+                {errors.reps ? <Text style={styles.errorText}>{errors.reps}</Text> : null}
               </View>
             </View>
 
@@ -126,14 +144,15 @@ export default function AddExerciseModal({ visible, sections, onAdd, onClose }: 
                 />
               </View>
               <View style={styles.half}>
-                <Text style={styles.label}>Pausa (seg)</Text>
+                <Text style={styles.label}>Pausa (0-600 seg)</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, errors.rest && styles.inputError]}
                   value={restSeconds}
-                  onChangeText={setRestSeconds}
-                  placeholder="30"
+                  onChangeText={(v) => { setRestSeconds(v); setErrors((p) => ({ ...p, rest: '' })); }}
+                  placeholder="60"
                   placeholderTextColor={theme.textMuted}
                 />
+                {errors.rest ? <Text style={styles.errorText}>{errors.rest}</Text> : null}
               </View>
             </View>
 

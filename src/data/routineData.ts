@@ -1,5 +1,44 @@
 import { Routine } from '../types';
 
+export const initialRoutine: Routine = {
+  id: 'r0',
+  name: 'Rutina Inicial',
+  frequency: '',
+  startDate: new Date().toISOString().split('T')[0],
+  renewDate: '',
+  sections: [
+    {
+      name: 'Día 1',
+      exercises: [
+        {
+          id: 'ei1',
+          name: 'Calentamiento',
+          series: 1,
+          reps: '10',
+          restSeconds: 30,
+          seriesCompleted: [false],
+        },
+        {
+          id: 'ei2',
+          name: 'Sentadillas',
+          series: 3,
+          reps: '12',
+          restSeconds: 60,
+          seriesCompleted: [false, false, false],
+        },
+        {
+          id: 'ei3',
+          name: 'Flexiones',
+          series: 3,
+          reps: '10',
+          restSeconds: 60,
+          seriesCompleted: [false, false, false],
+        },
+      ],
+    },
+  ],
+};
+
 export const defaultRoutine: Routine = {
   id: 'r1',
   name: 'Rutina Yol',
