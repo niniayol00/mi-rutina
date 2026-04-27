@@ -1,11 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, TextInput,
   StyleSheet, Vibration,
 } from 'react-native';
 import { Exercise } from '../types';
 import { theme } from '../constants/theme';
-
 
 interface ExerciseCardProps {
   exercise: Exercise;
@@ -32,21 +31,45 @@ export default function ExerciseCard({
 }: ExerciseCardProps) {
   const [editMode, setEditMode] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+
+  // Estado local para edición — se inicializa cuando se abre el popup
+  const [localName, setLocalName] = useState('');
+  const [localSeries, setLocalSeries] = useState('');
+  const [localReps, setLocalReps] = useState('');
+  const [localWeight, setLocalWeight] = useState('');
+  const [localRest, setLocalRest] = useState('');
+
   const allDone = exercise.seriesCompleted.every(Boolean);
+
+  const openEdit = () => {
+    setLocalName(exercise.name);
+    setLocalSeries(String(exercise.series));
+    setLocalReps(exercise.reps);
+    setLocalWeight(exercise.weight ?? '');
+    setLocalRest(String(exercise.restSeconds));
+    setConfirmingDelete(false);
+    setEditMode(true);
+  };
+
+  const saveAndClose = () => {
+    const seriesNum = Math.max(1, parseInt(localSeries) || 1);
+    onEdit('name', localName || exercise.name);
+    onEdit('reps', localReps);
+    onEdit('weight', localWeight);
+    onEdit('restSeconds', String(parseInt(localRest) || 0));
+    // Solo actualiza series y casilleros si cambió el número
+    if (seriesNum !== exercise.series) {
+      onEdit('series' as keyof Exercise, String(seriesNum));
+      onEdit('seriesCompleted' as keyof Exercise, JSON.stringify(Array(seriesNum).fill(false)));
+    }
+    setEditMode(false);
+  };
 
   const handleCheck = (index: number) => {
     if (vibrationOnCheck) Vibration.vibrate(50);
     onToggleSeries(index);
     if (!exercise.seriesCompleted[index] && autoStartTimer && (exercise.restSeconds > 0 || exercise.workSeconds)) {
       onTimerStart(exercise.restSeconds, exercise.workSeconds);
-    }
-  };
-
-  const handleSeriesChange = (value: string) => {
-    onEdit('series' as keyof Exercise, value);
-    const n = parseInt(value);
-    if (!isNaN(n) && n > 0) {
-      onEdit('seriesCompleted' as keyof Exercise, JSON.stringify(Array(n).fill(false)));
     }
   };
 
@@ -78,7 +101,7 @@ export default function ExerciseCard({
                 </TouchableOpacity>
               )
             )}
-            <TouchableOpacity onPress={() => setEditMode(false)} style={styles.doneBtn}>
+            <TouchableOpacity onPress={saveAndClose} style={styles.doneBtn}>
               <Text style={styles.doneBtnText}>LISTO ✓</Text>
             </TouchableOpacity>
           </View>
@@ -88,8 +111,8 @@ export default function ExerciseCard({
           <Text style={styles.fieldLabel}>Nombre</Text>
           <TextInput
             style={styles.fieldInput}
-            value={exercise.name}
-            onChangeText={(v) => onEdit('name', v)}
+            value={localName}
+            onChangeText={setLocalName}
             placeholder="Nombre del ejercicio"
             placeholderTextColor={theme.textMuted}
           />
@@ -100,8 +123,8 @@ export default function ExerciseCard({
             <Text style={styles.fieldLabel}>Series</Text>
             <TextInput
               style={styles.fieldInput}
-              value={String(exercise.series)}
-              onChangeText={handleSeriesChange}
+              value={localSeries}
+              onChangeText={setLocalSeries}
               placeholder="3"
               placeholderTextColor={theme.textMuted}
             />
@@ -110,8 +133,8 @@ export default function ExerciseCard({
             <Text style={styles.fieldLabel}>Repeticiones</Text>
             <TextInput
               style={styles.fieldInput}
-              value={exercise.reps}
-              onChangeText={(v) => onEdit('reps', v)}
+              value={localReps}
+              onChangeText={setLocalReps}
               placeholder="12"
               placeholderTextColor={theme.textMuted}
             />
@@ -123,8 +146,8 @@ export default function ExerciseCard({
             <Text style={styles.fieldLabel}>Peso</Text>
             <TextInput
               style={styles.fieldInput}
-              value={exercise.weight ?? ''}
-              onChangeText={(v) => onEdit('weight', v)}
+              value={localWeight}
+              onChangeText={setLocalWeight}
               placeholder="ej: 10 kg"
               placeholderTextColor={theme.textMuted}
             />
@@ -133,8 +156,8 @@ export default function ExerciseCard({
             <Text style={styles.fieldLabel}>Pausa (segundos)</Text>
             <TextInput
               style={styles.fieldInput}
-              value={String(exercise.restSeconds)}
-              onChangeText={(v) => onEdit('restSeconds', v)}
+              value={localRest}
+              onChangeText={setLocalRest}
               placeholder="30"
               placeholderTextColor={theme.textMuted}
             />
@@ -147,7 +170,7 @@ export default function ExerciseCard({
   return (
     <TouchableOpacity
       style={[styles.card, allDone && styles.cardDone]}
-      onPress={() => editable && setEditMode(true)}
+      onPress={() => editable && openEdit()}
       activeOpacity={editable ? 0.7 : 1}
     >
       <View style={styles.topRow}>
@@ -211,10 +234,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     lineHeight: 24,
   },
-  strikeText: {
-    textDecorationLine: 'line-through',
-    color: theme.strikeColor,
-  },
+  strikeText: { textDecorationLine: 'line-through', color: theme.strikeColor },
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -232,16 +252,12 @@ const styles = StyleSheet.create({
   checkboxDone: { backgroundColor: theme.checkboxActive, borderColor: theme.checkboxActive },
   checkMark: { color: '#000', fontSize: 16, fontWeight: '800' },
 
-  // Edit mode
   editHeader: {
     flexDirection: 'row', justifyContent: 'space-between',
-    alignItems: 'center', marginBottom: 16,
+    alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 8,
   },
-  editHeaderActions: { flexDirection: 'row', gap: 8, alignItems: 'center' },
-  editTitle: {
-    color: theme.textMuted, fontSize: 11,
-    letterSpacing: 2, fontWeight: '700',
-  },
+  editHeaderActions: { flexDirection: 'row', gap: 8, alignItems: 'center', flexWrap: 'wrap' },
+  editTitle: { color: theme.textMuted, fontSize: 11, letterSpacing: 2, fontWeight: '700' },
   doneBtn: {
     backgroundColor: theme.timerColor,
     borderRadius: 8, paddingHorizontal: 14, paddingVertical: 6,
@@ -256,7 +272,7 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: theme.danger,
     borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6,
   },
-  delBtnText: { color: theme.danger, fontSize: 15 },
+  delBtnText: { fontSize: 15 },
   confirmRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   confirmText: { color: theme.danger, fontSize: 12, fontWeight: '600' },
   confirmYes: {
