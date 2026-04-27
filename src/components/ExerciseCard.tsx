@@ -1,21 +1,11 @@
 import React, { useState } from 'react';
 import {
   View, Text, TouchableOpacity, TextInput,
-  StyleSheet, Vibration, Alert, Platform,
+  StyleSheet, Vibration,
 } from 'react-native';
 import { Exercise } from '../types';
 import { theme } from '../constants/theme';
 
-function confirmDelete(name: string, onConfirm: () => void) {
-  if (Platform.OS === 'web') {
-    if (window.confirm(`¿Eliminar "${name}"?`)) onConfirm();
-  } else {
-    Alert.alert('Eliminar', `¿Eliminar "${name}"?`, [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Eliminar', style: 'destructive', onPress: onConfirm },
-    ]);
-  }
-}
 
 interface ExerciseCardProps {
   exercise: Exercise;
@@ -41,6 +31,7 @@ export default function ExerciseCard({
   onDelete,
 }: ExerciseCardProps) {
   const [editMode, setEditMode] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const allDone = exercise.seriesCompleted.every(Boolean);
 
   const handleCheck = (index: number) => {
@@ -71,12 +62,21 @@ export default function ExerciseCard({
               </TouchableOpacity>
             )}
             {onDelete && (
-              <TouchableOpacity
-                onPress={() => confirmDelete(exercise.name, () => { setEditMode(false); onDelete!(); })}
-                style={styles.delBtn}
-              >
-                <Text style={styles.delBtnText}>🗑️</Text>
-              </TouchableOpacity>
+              confirmingDelete ? (
+                <View style={styles.confirmRow}>
+                  <Text style={styles.confirmText}>¿Eliminar?</Text>
+                  <TouchableOpacity onPress={() => { setConfirmingDelete(false); setEditMode(false); onDelete!(); }} style={styles.confirmYes}>
+                    <Text style={styles.confirmYesText}>Sí</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => setConfirmingDelete(false)} style={styles.confirmNo}>
+                    <Text style={styles.confirmNoText}>No</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <TouchableOpacity onPress={() => setConfirmingDelete(true)} style={styles.delBtn}>
+                  <Text style={styles.delBtnText}>🗑️</Text>
+                </TouchableOpacity>
+              )
             )}
             <TouchableOpacity onPress={() => setEditMode(false)} style={styles.doneBtn}>
               <Text style={styles.doneBtnText}>LISTO ✓</Text>
@@ -256,7 +256,19 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: theme.danger,
     borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6,
   },
-  delBtnText: { color: theme.danger, fontSize: 13, fontWeight: '700' },
+  delBtnText: { color: theme.danger, fontSize: 15 },
+  confirmRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  confirmText: { color: theme.danger, fontSize: 12, fontWeight: '600' },
+  confirmYes: {
+    backgroundColor: theme.danger, borderRadius: 8,
+    paddingHorizontal: 12, paddingVertical: 6,
+  },
+  confirmYesText: { color: '#fff', fontSize: 12, fontWeight: '800' },
+  confirmNo: {
+    borderWidth: 1, borderColor: theme.borderColor,
+    borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6,
+  },
+  confirmNoText: { color: theme.textMuted, fontSize: 12 },
   fieldGroup: { marginBottom: 12 },
   fieldRow: { flexDirection: 'row', gap: 12 },
   fieldLabel: {
