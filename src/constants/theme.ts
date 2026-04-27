@@ -1,0 +1,21 @@
+export const theme = {
+  backgroundColor: '#0B0B0B',
+  cardBackground: '#1A1A1A',
+  sectionBackground: '#111111',
+  textColor: '#FFFFFF',
+  textMuted: '#888888',
+  timerColor: '#39FF14',
+  accentColor: '#39FF14',
+  checkboxActive: '#39FF14',
+  checkboxInactive: '#333333',
+  strikeColor: '#555555',
+  borderColor: '#2A2A2A',
+  fontSize: {
+    title: 24,
+    exercise: 18,
+    timer: 72,
+    button: 16,
+    small: 13,
+    section: 14,
+  },
+} as const;
