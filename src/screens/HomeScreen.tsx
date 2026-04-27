@@ -263,7 +263,7 @@ export default function HomeScreen() {
             />
           ) : (
             <TouchableOpacity onPress={() => setEditingTitle(true)}>
-              <Text style={styles.title}>{routine.name} ✏️</Text>
+              <Text style={styles.title}>{routine.name}</Text>
             </TouchableOpacity>
           )}
           <Text style={styles.subtitle}>{routine.frequency}</Text>

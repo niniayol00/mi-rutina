@@ -1,12 +1,7 @@
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  TouchableOpacity,
-  TextInput,
-  StyleSheet,
-  Vibration,
-  Alert,
+  View, Text, TouchableOpacity, TextInput,
+  StyleSheet, Vibration, Alert,
 } from 'react-native';
 import { Exercise } from '../types';
 import { theme } from '../constants/theme';
@@ -34,7 +29,7 @@ export default function ExerciseCard({
   onDuplicate,
   onDelete,
 }: ExerciseCardProps) {
-  const [editMode, setEditMode] = useState(false);
+  const [editingField, setEditingField] = useState<string | null>(null);
   const allDone = exercise.seriesCompleted.every(Boolean);
 
   const handleCheck = (index: number) => {
@@ -46,122 +41,70 @@ export default function ExerciseCard({
   };
 
   const handleSeriesChange = (value: string) => {
+    onEdit('series' as keyof Exercise, value);
     const n = parseInt(value);
     if (!isNaN(n) && n > 0) {
-      onEdit('series' as keyof Exercise, value);
       onEdit('seriesCompleted' as keyof Exercise, JSON.stringify(Array(n).fill(false)));
     }
   };
 
-  if (editMode) {
+  const renderField = (
+    field: string,
+    value: string,
+    style: object,
+    placeholder: string,
+    onChangeFn?: (v: string) => void
+  ) => {
+    if (!editable) return <Text style={style}>{value || placeholder}</Text>;
+
+    if (editingField === field) {
+      return (
+        <TextInput
+          style={[style, styles.inlineInput]}
+          value={value}
+          onChangeText={onChangeFn || ((v) => onEdit(field as keyof Exercise, v))}
+          onBlur={() => setEditingField(null)}
+          autoFocus
+          selectTextOnFocus
+          placeholder={placeholder}
+          placeholderTextColor={theme.textMuted}
+        />
+      );
+    }
+
     return (
-      <View style={[styles.card, styles.cardEditing]}>
-        <View style={styles.editHeader}>
-          <Text style={styles.editTitle}>Editar ejercicio</Text>
-          <View style={styles.editActions}>
-            {onDuplicate && (
-              <TouchableOpacity onPress={() => { setEditMode(false); onDuplicate(); }} style={styles.dupBtn}>
-                <Text style={styles.dupBtnText}>⧉</Text>
-              </TouchableOpacity>
-            )}
-            {onDelete && (
-              <TouchableOpacity
-                onPress={() => Alert.alert('Eliminar', `¿Eliminar "${exercise.name}"?`, [
-                  { text: 'Cancelar', style: 'cancel' },
-                  { text: 'Eliminar', style: 'destructive', onPress: () => { setEditMode(false); onDelete!(); } },
-                ])}
-                style={styles.delBtn}
-              >
-                <Text style={styles.delBtnText}>✕</Text>
-              </TouchableOpacity>
-            )}
-            <TouchableOpacity onPress={() => setEditMode(false)} style={styles.doneBtn}>
-              <Text style={styles.doneBtnText}>LISTO ✓</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <View style={styles.fieldGroup}>
-          <Text style={styles.fieldLabel}>Nombre</Text>
-          <TextInput
-            style={styles.fieldInput}
-            value={exercise.name}
-            onChangeText={(v) => onEdit('name', v)}
-            placeholder="Nombre del ejercicio"
-            placeholderTextColor={theme.textMuted}
-          />
-        </View>
-
-        <View style={styles.fieldRow}>
-          <View style={[styles.fieldGroup, { flex: 1 }]}>
-            <Text style={styles.fieldLabel}>Series</Text>
-            <TextInput
-              style={styles.fieldInput}
-              value={String(exercise.series)}
-              onChangeText={handleSeriesChange}
-              keyboardType="numeric"
-              placeholder="3"
-              placeholderTextColor={theme.textMuted}
-            />
-          </View>
-
-          <View style={[styles.fieldGroup, { flex: 1 }]}>
-            <Text style={styles.fieldLabel}>Repeticiones</Text>
-            <TextInput
-              style={styles.fieldInput}
-              value={exercise.reps}
-              onChangeText={(v) => onEdit('reps', v)}
-              placeholder="12"
-              placeholderTextColor={theme.textMuted}
-            />
-          </View>
-        </View>
-
-        <View style={styles.fieldRow}>
-          <View style={[styles.fieldGroup, { flex: 1 }]}>
-            <Text style={styles.fieldLabel}>Peso</Text>
-            <TextInput
-              style={styles.fieldInput}
-              value={exercise.weight ?? ''}
-              onChangeText={(v) => onEdit('weight', v)}
-              placeholder="ej: 10 kg"
-              placeholderTextColor={theme.textMuted}
-            />
-          </View>
-
-          <View style={[styles.fieldGroup, { flex: 1 }]}>
-            <Text style={styles.fieldLabel}>Pausa (segundos)</Text>
-            <TextInput
-              style={styles.fieldInput}
-              value={String(exercise.restSeconds)}
-              onChangeText={(v) => onEdit('restSeconds', v)}
-              keyboardType="numeric"
-              placeholder="30"
-              placeholderTextColor={theme.textMuted}
-            />
-          </View>
-        </View>
-      </View>
+      <TouchableOpacity onPress={() => setEditingField(field)}>
+        <Text style={[style, allDone && field === 'name' && styles.strikeText]}>
+          {value || <Text style={styles.placeholder}>{placeholder}</Text>}
+        </Text>
+      </TouchableOpacity>
     );
-  }
+  };
 
   return (
     <View style={[styles.card, allDone && styles.cardDone]}>
       <View style={styles.topRow}>
         <View style={styles.nameContainer}>
-          <Text style={[styles.name, allDone && styles.strikeText]}>{exercise.name}</Text>
+          {renderField('name', exercise.name, styles.name, 'Ejercicio')}
+
           <View style={styles.metaRow}>
-            {exercise.reps ? <Text style={styles.meta}>{exercise.reps}</Text> : null}
-            {exercise.weight ? (
-              <>
-                <Text style={styles.metaSep}>·</Text>
-                <Text style={styles.meta}>{exercise.weight}</Text>
-              </>
-            ) : null}
+            {renderField('reps', exercise.reps, styles.meta, 'reps')}
+            <Text style={styles.metaSep}>·</Text>
+            {renderField('weight', exercise.weight ?? '', styles.meta, 'peso')}
+            <Text style={styles.metaSep}>·</Text>
+            {renderField(
+              'series',
+              String(exercise.series),
+              styles.meta,
+              'series',
+              handleSeriesChange
+            )}
+            <Text style={styles.meta}> series</Text>
             {exercise.restSeconds > 0 && (
               <>
                 <Text style={styles.metaSep}>·</Text>
-                <Text style={styles.meta}>{exercise.restSeconds}s pausa</Text>
+                {renderField('restSeconds', String(exercise.restSeconds), styles.meta, '0')}
+                <Text style={styles.meta}>s pausa</Text>
               </>
             )}
           </View>
@@ -169,10 +112,26 @@ export default function ExerciseCard({
 
         <View style={styles.rightCol}>
           {editable && (
-            <TouchableOpacity onPress={() => setEditMode(true)} style={styles.editBtn}>
-              <Text style={styles.editBtnText}>✏️</Text>
-            </TouchableOpacity>
+            <View style={styles.actions}>
+              {onDuplicate && (
+                <TouchableOpacity onPress={onDuplicate} style={styles.actionBtn}>
+                  <Text style={styles.actionBtnText}>⧉</Text>
+                </TouchableOpacity>
+              )}
+              {onDelete && (
+                <TouchableOpacity
+                  onPress={() => Alert.alert('Eliminar', `¿Eliminar "${exercise.name}"?`, [
+                    { text: 'Cancelar', style: 'cancel' },
+                    { text: 'Eliminar', style: 'destructive', onPress: onDelete },
+                  ])}
+                  style={[styles.actionBtn, styles.deleteBtn]}
+                >
+                  <Text style={styles.deleteBtnText}>✕</Text>
+                </TouchableOpacity>
+              )}
+            </View>
           )}
+
           <View style={styles.seriesRow}>
             {exercise.seriesCompleted.map((done, i) => (
               <TouchableOpacity
@@ -200,21 +159,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.borderColor,
   },
-  cardDone: {
-    opacity: 0.4,
-  },
-  cardEditing: {
-    borderColor: theme.accentColor,
-  },
+  cardDone: { opacity: 0.4 },
   topRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 12,
   },
-  nameContainer: {
-    flex: 1,
-  },
+  nameContainer: { flex: 1 },
   name: {
     color: theme.textColor,
     fontSize: theme.fontSize.exercise,
@@ -230,6 +182,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 4,
     flexWrap: 'wrap',
+    gap: 2,
   },
   meta: {
     color: theme.textMuted,
@@ -238,17 +191,44 @@ const styles = StyleSheet.create({
   metaSep: {
     color: theme.borderColor,
     fontSize: theme.fontSize.small,
-    marginHorizontal: 4,
+    marginHorizontal: 3,
+  },
+  placeholder: {
+    color: theme.checkboxInactive,
+    fontStyle: 'italic',
+  },
+  inlineInput: {
+    borderBottomWidth: 1,
+    borderBottomColor: theme.timerColor,
+    paddingVertical: 1,
+    minWidth: 40,
   },
   rightCol: {
     alignItems: 'flex-end',
     gap: 8,
   },
-  editBtn: {
-    padding: 4,
+  actions: {
+    flexDirection: 'row',
+    gap: 6,
   },
-  editBtnText: {
-    fontSize: 16,
+  actionBtn: {
+    borderWidth: 1,
+    borderColor: theme.borderColor,
+    borderRadius: 6,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+  },
+  actionBtnText: {
+    color: theme.textMuted,
+    fontSize: 13,
+  },
+  deleteBtn: {
+    borderColor: theme.danger,
+  },
+  deleteBtnText: {
+    color: theme.danger,
+    fontSize: 12,
+    fontWeight: '700',
   },
   seriesRow: {
     flexDirection: 'row',
@@ -272,80 +252,5 @@ const styles = StyleSheet.create({
     color: '#000',
     fontSize: 16,
     fontWeight: '800',
-  },
-  editHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  editActions: {
-    flexDirection: 'row',
-    gap: 8,
-    alignItems: 'center',
-  },
-  editTitle: {
-    color: theme.textMuted,
-    fontSize: 12,
-    letterSpacing: 2,
-    fontWeight: '600',
-  },
-  doneBtn: {
-    backgroundColor: theme.accentColor,
-    borderRadius: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-  },
-  doneBtnText: {
-    color: '#000',
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 1,
-  },
-  dupBtn: {
-    borderWidth: 1,
-    borderColor: theme.borderColor,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  dupBtnText: {
-    color: theme.textMuted,
-    fontSize: 14,
-  },
-  delBtn: {
-    borderWidth: 1,
-    borderColor: theme.danger,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  delBtnText: {
-    color: theme.danger,
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  fieldGroup: {
-    marginBottom: 12,
-  },
-  fieldRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  fieldLabel: {
-    color: theme.textMuted,
-    fontSize: 11,
-    letterSpacing: 1,
-    marginBottom: 6,
-    fontWeight: '600',
-  },
-  fieldInput: {
-    backgroundColor: theme.sectionBackground,
-    borderRadius: 8,
-    padding: 10,
-    color: theme.textColor,
-    fontSize: 15,
-    borderWidth: 1,
-    borderColor: theme.borderColor,
   },
 });
