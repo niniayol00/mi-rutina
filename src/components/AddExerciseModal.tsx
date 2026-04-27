@@ -98,7 +98,7 @@ export default function AddExerciseModal({ visible, sections, onAdd, onClose }: 
                   style={styles.input}
                   value={series}
                   onChangeText={setSeries}
-                  keyboardType="numeric"
+                  inputMode="numeric"
                   placeholder="3"
                   placeholderTextColor={theme.textMuted}
                 />
@@ -132,7 +132,7 @@ export default function AddExerciseModal({ visible, sections, onAdd, onClose }: 
                   style={styles.input}
                   value={restSeconds}
                   onChangeText={setRestSeconds}
-                  keyboardType="numeric"
+                  inputMode="numeric"
                   placeholder="30"
                   placeholderTextColor={theme.textMuted}
                 />
