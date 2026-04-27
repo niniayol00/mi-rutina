@@ -1,47 +1,64 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  StyleSheet,
-  RefreshControl,
-  Alert,
+  View, Text, ScrollView, TouchableOpacity, StyleSheet, RefreshControl,
 } from 'react-native';
 import { useFocusEffect } from 'expo-router';
-import { Routine, AppSettings } from '../types';
-import { loadRoutine, loadSettings, saveRoutine, checkAndResetIfNewDay } from '../utils/storage';
+import { Routine, AppSettings, Exercise } from '../types';
+import {
+  loadRoutine, loadSettings, saveRoutine, checkAndResetIfNewDay,
+  loadTrainingDates, saveTrainingDate,
+} from '../utils/storage';
 import { theme } from '../constants/theme';
 import ExerciseCard from '../components/ExerciseCard';
 import TimerModal from '../components/TimerModal';
+import CalendarModal from '../components/CalendarModal';
+import AddExerciseModal from '../components/AddExerciseModal';
 
 export default function HomeScreen() {
   const [routine, setRoutine] = useState<Routine | null>(null);
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [timerVisible, setTimerVisible] = useState(false);
   const [timerSeconds, setTimerSeconds] = useState(30);
+  const [timerWorkSeconds, setTimerWorkSeconds] = useState<number | undefined>(undefined);
+  const [calendarVisible, setCalendarVisible] = useState(false);
+  const [addVisible, setAddVisible] = useState(false);
+  const [trainingDates, setTrainingDates] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const completedShown = useRef(false);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [r, s] = await Promise.all([loadRoutine(), loadSettings()]);
-    const { routine: checkedRoutine, settings: checkedSettings } = await checkAndResetIfNewDay(r, s);
-    setRoutine(checkedRoutine);
+    const [r, s, dates] = await Promise.all([loadRoutine(), loadSettings(), loadTrainingDates()]);
+    const { routine: checked, settings: checkedSettings } = await checkAndResetIfNewDay(r, s);
+    setRoutine(checked);
     setSettings(checkedSettings);
+    setTrainingDates(dates);
+    completedShown.current = false;
     setLoading(false);
   }, []);
 
-  useFocusEffect(
-    useCallback(() => {
-      load();
-    }, [load])
-  );
+  useFocusEffect(useCallback(() => { load(); }, [load]));
 
   const persistRoutine = (updated: Routine) => {
     if (saveTimeout.current) clearTimeout(saveTimeout.current);
     saveTimeout.current = setTimeout(() => saveRoutine(updated), 400);
   };
+
+  const checkAllCompleted = useCallback(async (updated: Routine) => {
+    if (completedShown.current) return;
+    const allDone = updated.sections.every((s) =>
+      s.exercises.every((ex) => ex.seriesCompleted.every(Boolean))
+    );
+    if (allDone) {
+      completedShown.current = true;
+      const today = new Date();
+      const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+      const updatedDates = await saveTrainingDate(dateStr);
+      setTrainingDates(updatedDates);
+      setTimeout(() => setCalendarVisible(true), 600);
+    }
+  }, []);
 
   const toggleSeries = (sectionIdx: number, exerciseIdx: number, seriesIdx: number) => {
     if (!routine) return;
@@ -62,14 +79,10 @@ export default function HomeScreen() {
     };
     setRoutine(updated);
     persistRoutine(updated);
+    checkAllCompleted(updated);
   };
 
-  const editExerciseField = (
-    sectionIdx: number,
-    exerciseIdx: number,
-    field: string,
-    value: string
-  ) => {
+  const editExerciseField = (sectionIdx: number, exerciseIdx: number, field: string, value: string) => {
     if (!routine) return;
     const updated: Routine = {
       ...routine,
@@ -91,7 +104,18 @@ export default function HomeScreen() {
     persistRoutine(updated);
   };
 
-  const [timerWorkSeconds, setTimerWorkSeconds] = useState<number | undefined>(undefined);
+  const addExercise = (sectionIdx: number, exercise: Exercise) => {
+    if (!routine) return;
+    const updated: Routine = {
+      ...routine,
+      sections: routine.sections.map((section, si) => {
+        if (si !== sectionIdx) return section;
+        return { ...section, exercises: [...section.exercises, exercise] };
+      }),
+    };
+    setRoutine(updated);
+    persistRoutine(updated);
+  };
 
   const startTimer = (seconds: number, workSeconds?: number) => {
     setTimerSeconds(seconds);
@@ -101,8 +125,7 @@ export default function HomeScreen() {
 
   const progress = () => {
     if (!routine) return { done: 0, total: 0 };
-    let done = 0;
-    let total = 0;
+    let done = 0, total = 0;
     routine.sections.forEach((s) =>
       s.exercises.forEach((ex) => {
         total += ex.seriesCompleted.length;
@@ -130,9 +153,7 @@ export default function HomeScreen() {
           <Text style={styles.subtitle}>{routine.frequency}</Text>
         </View>
         <View style={styles.progressBadge}>
-          <Text style={styles.progressText}>
-            {done}/{total}
-          </Text>
+          <Text style={styles.progressText}>{done}/{total}</Text>
           <Text style={styles.progressLabel}>series</Text>
         </View>
       </View>
@@ -146,9 +167,7 @@ export default function HomeScreen() {
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
-        refreshControl={
-          <RefreshControl refreshing={loading} onRefresh={load} tintColor={theme.timerColor} />
-        }
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={load} tintColor={theme.timerColor} />}
         showsVerticalScrollIndicator={false}
       >
         {routine.sections.map((section, si) => (
@@ -170,13 +189,18 @@ export default function HomeScreen() {
         ))}
 
         {done === total && total > 0 && (
-          <View style={styles.completeBanner}>
+          <TouchableOpacity style={styles.completeBanner} onPress={() => setCalendarVisible(true)}>
             <Text style={styles.completeText}>RUTINA COMPLETADA</Text>
-          </View>
+            <Text style={styles.completeSub}>Ver calendario</Text>
+          </TouchableOpacity>
         )}
 
-        <View style={{ height: 40 }} />
+        <View style={{ height: 100 }} />
       </ScrollView>
+
+      <TouchableOpacity style={styles.fab} onPress={() => setAddVisible(true)}>
+        <Text style={styles.fabText}>+</Text>
+      </TouchableOpacity>
 
       <TimerModal
         visible={timerVisible}
@@ -187,100 +211,62 @@ export default function HomeScreen() {
         vibrationOnFinish={settings.vibrationOnFinish}
         onClose={() => setTimerVisible(false)}
       />
+
+      <CalendarModal
+        visible={calendarVisible}
+        trainingDates={trainingDates}
+        onClose={() => setCalendarVisible(false)}
+      />
+
+      <AddExerciseModal
+        visible={addVisible}
+        sections={routine.sections}
+        onAdd={addExercise}
+        onClose={() => setAddVisible(false)}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.backgroundColor,
-  },
-  loading: {
-    flex: 1,
-    backgroundColor: theme.backgroundColor,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    color: theme.textMuted,
-    fontSize: 16,
-  },
+  container: { flex: 1, backgroundColor: theme.backgroundColor },
+  loading: { flex: 1, backgroundColor: theme.backgroundColor, justifyContent: 'center', alignItems: 'center' },
+  loadingText: { color: theme.textMuted, fontSize: 16 },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 12,
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
+    paddingHorizontal: 20, paddingTop: 20, paddingBottom: 12,
   },
-  title: {
-    color: theme.textColor,
-    fontSize: theme.fontSize.title,
-    fontWeight: '700',
-  },
-  subtitle: {
-    color: theme.textMuted,
-    fontSize: theme.fontSize.small,
-    marginTop: 2,
-  },
+  title: { color: theme.textColor, fontSize: theme.fontSize.title, fontWeight: '700' },
+  subtitle: { color: theme.textMuted, fontSize: theme.fontSize.small, marginTop: 2 },
   progressBadge: {
-    alignItems: 'center',
-    backgroundColor: theme.cardBackground,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderWidth: 1,
-    borderColor: theme.borderColor,
+    alignItems: 'center', backgroundColor: theme.cardBackground,
+    borderRadius: 12, paddingHorizontal: 16, paddingVertical: 8,
+    borderWidth: 1, borderColor: theme.borderColor,
   },
-  progressText: {
-    color: theme.timerColor,
-    fontSize: 20,
-    fontWeight: '700',
-  },
-  progressLabel: {
-    color: theme.textMuted,
-    fontSize: 10,
-    letterSpacing: 1,
-  },
+  progressText: { color: theme.timerColor, fontSize: 20, fontWeight: '700' },
+  progressLabel: { color: theme.textMuted, fontSize: 10, letterSpacing: 1 },
   progressBarContainer: {
-    height: 2,
-    backgroundColor: theme.borderColor,
-    marginHorizontal: 20,
-    borderRadius: 1,
-    marginBottom: 8,
+    height: 2, backgroundColor: theme.borderColor,
+    marginHorizontal: 20, borderRadius: 1, marginBottom: 8,
   },
-  progressBar: {
-    height: 2,
-    backgroundColor: theme.timerColor,
-    borderRadius: 1,
-  },
-  scroll: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-  },
-  section: {
-    marginBottom: 24,
-  },
+  progressBar: { height: 2, backgroundColor: theme.timerColor, borderRadius: 1 },
+  scroll: { flex: 1 },
+  scrollContent: { paddingHorizontal: 16, paddingTop: 8 },
+  section: { marginBottom: 24 },
   sectionName: {
-    color: theme.textMuted,
-    fontSize: theme.fontSize.section,
-    fontWeight: '600',
-    letterSpacing: 2,
-    marginBottom: 10,
-    marginLeft: 2,
+    color: theme.textMuted, fontSize: theme.fontSize.section,
+    fontWeight: '600', letterSpacing: 2, marginBottom: 10, marginLeft: 2,
   },
-  completeBanner: {
-    alignItems: 'center',
-    paddingVertical: 24,
+  completeBanner: { alignItems: 'center', paddingVertical: 24 },
+  completeText: { color: theme.timerColor, fontSize: 18, fontWeight: '700', letterSpacing: 3 },
+  completeSub: { color: theme.textMuted, fontSize: 12, marginTop: 4 },
+  fab: {
+    position: 'absolute', bottom: 32, right: 24,
+    width: 52, height: 52, borderRadius: 26,
+    backgroundColor: theme.timerColor,
+    justifyContent: 'center', alignItems: 'center',
+    shadowColor: theme.timerColor, shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6, shadowRadius: 12, elevation: 8,
   },
-  completeText: {
-    color: theme.timerColor,
-    fontSize: 18,
-    fontWeight: '700',
-    letterSpacing: 3,
-  },
+  fabText: { color: '#000', fontSize: 28, fontWeight: '600', lineHeight: 32 },
 });

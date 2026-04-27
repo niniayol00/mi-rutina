@@ -5,7 +5,8 @@ import { defaultRoutine } from '../data/routineData';
 const ROUTINE_KEY = 'mi_rutina_routine';
 const SETTINGS_KEY = 'mi_rutina_settings';
 const DATA_VERSION_KEY = 'mi_rutina_version';
-const CURRENT_VERSION = '2';
+const TRAINING_DATES_KEY = 'mi_rutina_training_dates';
+const CURRENT_VERSION = '3';
 
 export const defaultSettings: AppSettings = {
   autoStartTimerOnCheck: true,
@@ -64,6 +65,25 @@ export function resetAllSeries(routine: Routine): Routine {
       })),
     })),
   };
+}
+
+export async function loadTrainingDates(): Promise<string[]> {
+  try {
+    const raw = await AsyncStorage.getItem(TRAINING_DATES_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function saveTrainingDate(dateStr: string): Promise<string[]> {
+  const dates = await loadTrainingDates();
+  if (!dates.includes(dateStr)) {
+    const updated = [...dates, dateStr];
+    await AsyncStorage.setItem(TRAINING_DATES_KEY, JSON.stringify(updated));
+    return updated;
+  }
+  return dates;
 }
 
 export async function checkAndResetIfNewDay(

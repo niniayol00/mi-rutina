@@ -2,7 +2,7 @@ import { Routine } from '../types';
 
 export const defaultRoutine: Routine = {
   id: 'r1',
-  name: 'Rutina Sole',
+  name: 'Rutina Yol',
   frequency: '2 veces por semana',
   startDate: '2026-04-20',
   renewDate: '2026-06-20',
