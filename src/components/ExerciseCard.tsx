@@ -1,10 +1,21 @@
 import React, { useState } from 'react';
 import {
   View, Text, TouchableOpacity, TextInput,
-  StyleSheet, Vibration, Alert,
+  StyleSheet, Vibration, Alert, Platform,
 } from 'react-native';
 import { Exercise } from '../types';
 import { theme } from '../constants/theme';
+
+function confirmDelete(name: string, onConfirm: () => void) {
+  if (Platform.OS === 'web') {
+    if (window.confirm(`¿Eliminar "${name}"?`)) onConfirm();
+  } else {
+    Alert.alert('Eliminar', `¿Eliminar "${name}"?`, [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Eliminar', style: 'destructive', onPress: onConfirm },
+    ]);
+  }
+}
 
 interface ExerciseCardProps {
   exercise: Exercise;
@@ -61,10 +72,7 @@ export default function ExerciseCard({
             )}
             {onDelete && (
               <TouchableOpacity
-                onPress={() => Alert.alert('Eliminar', `¿Eliminar "${exercise.name}"?`, [
-                  { text: 'Cancelar', style: 'cancel' },
-                  { text: 'Eliminar', style: 'destructive', onPress: () => { setEditMode(false); onDelete!(); } },
-                ])}
+                onPress={() => confirmDelete(exercise.name, () => { setEditMode(false); onDelete!(); })}
                 style={styles.delBtn}
               >
                 <Text style={styles.delBtnText}>🗑️</Text>
