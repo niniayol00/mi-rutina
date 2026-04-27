@@ -29,7 +29,7 @@ export default function ExerciseCard({
   onDuplicate,
   onDelete,
 }: ExerciseCardProps) {
-  const [editingField, setEditingField] = useState<string | null>(null);
+  const [editMode, setEditMode] = useState(false);
   const allDone = exercise.seriesCompleted.every(Boolean);
 
   const handleCheck = (index: number) => {
@@ -48,105 +48,134 @@ export default function ExerciseCard({
     }
   };
 
-  const renderField = (
-    field: string,
-    value: string,
-    style: object,
-    placeholder: string,
-    onChangeFn?: (v: string) => void
-  ) => {
-    if (!editable) return <Text style={style}>{value || placeholder}</Text>;
-
-    if (editingField === field) {
-      return (
-        <TextInput
-          style={[style, styles.inlineInput]}
-          value={value}
-          onChangeText={onChangeFn || ((v) => onEdit(field as keyof Exercise, v))}
-          onBlur={() => setEditingField(null)}
-          autoFocus
-          selectTextOnFocus
-          placeholder={placeholder}
-          placeholderTextColor={theme.textMuted}
-        />
-      );
-    }
-
+  if (editMode) {
     return (
-      <TouchableOpacity onPress={() => setEditingField(field)}>
-        <Text style={[style, allDone && field === 'name' && styles.strikeText]}>
-          {value || <Text style={styles.placeholder}>{placeholder}</Text>}
-        </Text>
-      </TouchableOpacity>
+      <View style={[styles.card, styles.cardEditing]}>
+        <View style={styles.editHeader}>
+          <Text style={styles.editTitle}>EDITAR EJERCICIO</Text>
+          <View style={styles.editHeaderActions}>
+            {onDuplicate && (
+              <TouchableOpacity onPress={() => { setEditMode(false); onDuplicate(); }} style={styles.dupBtn}>
+                <Text style={styles.dupBtnText}>⧉ Duplicar</Text>
+              </TouchableOpacity>
+            )}
+            {onDelete && (
+              <TouchableOpacity
+                onPress={() => Alert.alert('Eliminar', `¿Eliminar "${exercise.name}"?`, [
+                  { text: 'Cancelar', style: 'cancel' },
+                  { text: 'Eliminar', style: 'destructive', onPress: () => { setEditMode(false); onDelete!(); } },
+                ])}
+                style={styles.delBtn}
+              >
+                <Text style={styles.delBtnText}>✕</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity onPress={() => setEditMode(false)} style={styles.doneBtn}>
+              <Text style={styles.doneBtnText}>LISTO ✓</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={styles.fieldGroup}>
+          <Text style={styles.fieldLabel}>Nombre</Text>
+          <TextInput
+            style={styles.fieldInput}
+            value={exercise.name}
+            onChangeText={(v) => onEdit('name', v)}
+            placeholder="Nombre del ejercicio"
+            placeholderTextColor={theme.textMuted}
+          />
+        </View>
+
+        <View style={styles.fieldRow}>
+          <View style={[styles.fieldGroup, { flex: 1 }]}>
+            <Text style={styles.fieldLabel}>Series</Text>
+            <TextInput
+              style={styles.fieldInput}
+              value={String(exercise.series)}
+              onChangeText={handleSeriesChange}
+              placeholder="3"
+              placeholderTextColor={theme.textMuted}
+            />
+          </View>
+          <View style={[styles.fieldGroup, { flex: 1 }]}>
+            <Text style={styles.fieldLabel}>Repeticiones</Text>
+            <TextInput
+              style={styles.fieldInput}
+              value={exercise.reps}
+              onChangeText={(v) => onEdit('reps', v)}
+              placeholder="12"
+              placeholderTextColor={theme.textMuted}
+            />
+          </View>
+        </View>
+
+        <View style={styles.fieldRow}>
+          <View style={[styles.fieldGroup, { flex: 1 }]}>
+            <Text style={styles.fieldLabel}>Peso</Text>
+            <TextInput
+              style={styles.fieldInput}
+              value={exercise.weight ?? ''}
+              onChangeText={(v) => onEdit('weight', v)}
+              placeholder="ej: 10 kg"
+              placeholderTextColor={theme.textMuted}
+            />
+          </View>
+          <View style={[styles.fieldGroup, { flex: 1 }]}>
+            <Text style={styles.fieldLabel}>Pausa (segundos)</Text>
+            <TextInput
+              style={styles.fieldInput}
+              value={String(exercise.restSeconds)}
+              onChangeText={(v) => onEdit('restSeconds', v)}
+              placeholder="30"
+              placeholderTextColor={theme.textMuted}
+            />
+          </View>
+        </View>
+      </View>
     );
-  };
+  }
 
   return (
-    <View style={[styles.card, allDone && styles.cardDone]}>
+    <TouchableOpacity
+      style={[styles.card, allDone && styles.cardDone]}
+      onPress={() => editable && setEditMode(true)}
+      activeOpacity={editable ? 0.7 : 1}
+    >
       <View style={styles.topRow}>
         <View style={styles.nameContainer}>
-          {renderField('name', exercise.name, styles.name, 'Ejercicio')}
-
+          <Text style={[styles.name, allDone && styles.strikeText]}>{exercise.name}</Text>
           <View style={styles.metaRow}>
-            {renderField('reps', exercise.reps, styles.meta, 'reps')}
-            <Text style={styles.metaSep}>·</Text>
-            {renderField('weight', exercise.weight ?? '', styles.meta, 'peso')}
-            <Text style={styles.metaSep}>·</Text>
-            {renderField(
-              'series',
-              String(exercise.series),
-              styles.meta,
-              'series',
-              handleSeriesChange
-            )}
-            <Text style={styles.meta}> series</Text>
+            {exercise.reps ? <Text style={styles.meta}>{exercise.reps}</Text> : null}
+            {exercise.weight ? (
+              <>
+                <Text style={styles.metaSep}>·</Text>
+                <Text style={styles.meta}>{exercise.weight}</Text>
+              </>
+            ) : null}
             {exercise.restSeconds > 0 && (
               <>
                 <Text style={styles.metaSep}>·</Text>
-                {renderField('restSeconds', String(exercise.restSeconds), styles.meta, '0')}
-                <Text style={styles.meta}>s pausa</Text>
+                <Text style={styles.meta}>{exercise.restSeconds}s pausa</Text>
               </>
             )}
           </View>
         </View>
 
-        <View style={styles.rightCol}>
-          {editable && (
-            <View style={styles.actions}>
-              {onDuplicate && (
-                <TouchableOpacity onPress={onDuplicate} style={styles.actionBtn}>
-                  <Text style={styles.actionBtnText}>⧉</Text>
-                </TouchableOpacity>
-              )}
-              {onDelete && (
-                <TouchableOpacity
-                  onPress={() => Alert.alert('Eliminar', `¿Eliminar "${exercise.name}"?`, [
-                    { text: 'Cancelar', style: 'cancel' },
-                    { text: 'Eliminar', style: 'destructive', onPress: onDelete },
-                  ])}
-                  style={[styles.actionBtn, styles.deleteBtn]}
-                >
-                  <Text style={styles.deleteBtnText}>✕</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          )}
-
-          <View style={styles.seriesRow}>
-            {exercise.seriesCompleted.map((done, i) => (
-              <TouchableOpacity
-                key={i}
-                style={[styles.checkbox, done && styles.checkboxDone]}
-                onPress={() => handleCheck(i)}
-                activeOpacity={0.7}
-              >
-                {done && <Text style={styles.checkMark}>✓</Text>}
-              </TouchableOpacity>
-            ))}
-          </View>
+        <View style={styles.seriesRow}>
+          {exercise.seriesCompleted.map((done, i) => (
+            <TouchableOpacity
+              key={i}
+              style={[styles.checkbox, done && styles.checkboxDone]}
+              onPress={(e) => { e.stopPropagation?.(); handleCheck(i); }}
+              activeOpacity={0.7}
+            >
+              {done && <Text style={styles.checkMark}>✓</Text>}
+            </TouchableOpacity>
+          ))}
         </View>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 
@@ -160,6 +189,7 @@ const styles = StyleSheet.create({
     borderColor: theme.borderColor,
   },
   cardDone: { opacity: 0.4 },
+  cardEditing: { borderColor: theme.timerColor },
   topRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -182,75 +212,53 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 4,
     flexWrap: 'wrap',
-    gap: 2,
   },
-  meta: {
-    color: theme.textMuted,
-    fontSize: theme.fontSize.small,
-  },
-  metaSep: {
-    color: theme.borderColor,
-    fontSize: theme.fontSize.small,
-    marginHorizontal: 3,
-  },
-  placeholder: {
-    color: theme.checkboxInactive,
-    fontStyle: 'italic',
-  },
-  inlineInput: {
-    borderBottomWidth: 1,
-    borderBottomColor: theme.timerColor,
-    paddingVertical: 1,
-    minWidth: 40,
-  },
-  rightCol: {
-    alignItems: 'flex-end',
-    gap: 8,
-  },
-  actions: {
-    flexDirection: 'row',
-    gap: 6,
-  },
-  actionBtn: {
-    borderWidth: 1,
-    borderColor: theme.borderColor,
-    borderRadius: 6,
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-  },
-  actionBtnText: {
-    color: theme.textMuted,
-    fontSize: 13,
-  },
-  deleteBtn: {
-    borderColor: theme.danger,
-  },
-  deleteBtnText: {
-    color: theme.danger,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  seriesRow: {
-    flexDirection: 'row',
-    gap: 8,
-    alignItems: 'center',
-  },
+  meta: { color: theme.textMuted, fontSize: theme.fontSize.small },
+  metaSep: { color: theme.borderColor, fontSize: theme.fontSize.small, marginHorizontal: 4 },
+  seriesRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
   checkbox: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: theme.checkboxInactive,
-    justifyContent: 'center',
-    alignItems: 'center',
+    width: 36, height: 36, borderRadius: 8,
+    borderWidth: 2, borderColor: theme.checkboxInactive,
+    justifyContent: 'center', alignItems: 'center',
   },
-  checkboxDone: {
-    backgroundColor: theme.checkboxActive,
-    borderColor: theme.checkboxActive,
+  checkboxDone: { backgroundColor: theme.checkboxActive, borderColor: theme.checkboxActive },
+  checkMark: { color: '#000', fontSize: 16, fontWeight: '800' },
+
+  // Edit mode
+  editHeader: {
+    flexDirection: 'row', justifyContent: 'space-between',
+    alignItems: 'center', marginBottom: 16,
   },
-  checkMark: {
-    color: '#000',
-    fontSize: 16,
-    fontWeight: '800',
+  editHeaderActions: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  editTitle: {
+    color: theme.textMuted, fontSize: 11,
+    letterSpacing: 2, fontWeight: '700',
+  },
+  doneBtn: {
+    backgroundColor: theme.timerColor,
+    borderRadius: 8, paddingHorizontal: 14, paddingVertical: 6,
+  },
+  doneBtnText: { color: '#000', fontSize: 12, fontWeight: '800', letterSpacing: 1 },
+  dupBtn: {
+    borderWidth: 1, borderColor: theme.borderColor,
+    borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6,
+  },
+  dupBtnText: { color: theme.textMuted, fontSize: 12 },
+  delBtn: {
+    borderWidth: 1, borderColor: theme.danger,
+    borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6,
+  },
+  delBtnText: { color: theme.danger, fontSize: 13, fontWeight: '700' },
+  fieldGroup: { marginBottom: 12 },
+  fieldRow: { flexDirection: 'row', gap: 12 },
+  fieldLabel: {
+    color: theme.textMuted, fontSize: 11,
+    letterSpacing: 1, marginBottom: 6, fontWeight: '600',
+  },
+  fieldInput: {
+    backgroundColor: theme.sectionBackground,
+    borderRadius: 8, padding: 10,
+    color: theme.textColor, fontSize: 15,
+    borderWidth: 1, borderColor: theme.borderColor,
   },
 });
