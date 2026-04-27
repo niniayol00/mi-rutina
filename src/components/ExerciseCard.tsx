@@ -6,6 +6,7 @@ import {
   TextInput,
   StyleSheet,
   Vibration,
+  Alert,
 } from 'react-native';
 import { Exercise } from '../types';
 import { theme } from '../constants/theme';
@@ -18,6 +19,8 @@ interface ExerciseCardProps {
   onEdit: (field: keyof Exercise, value: string) => void;
   onTimerStart: (seconds: number, workSeconds?: number) => void;
   autoStartTimer: boolean;
+  onDuplicate?: () => void;
+  onDelete?: () => void;
 }
 
 export default function ExerciseCard({
@@ -28,6 +31,8 @@ export default function ExerciseCard({
   onEdit,
   onTimerStart,
   autoStartTimer,
+  onDuplicate,
+  onDelete,
 }: ExerciseCardProps) {
   const [editMode, setEditMode] = useState(false);
   const allDone = exercise.seriesCompleted.every(Boolean);
@@ -53,9 +58,27 @@ export default function ExerciseCard({
       <View style={[styles.card, styles.cardEditing]}>
         <View style={styles.editHeader}>
           <Text style={styles.editTitle}>Editar ejercicio</Text>
-          <TouchableOpacity onPress={() => setEditMode(false)} style={styles.doneBtn}>
-            <Text style={styles.doneBtnText}>LISTO ✓</Text>
-          </TouchableOpacity>
+          <View style={styles.editActions}>
+            {onDuplicate && (
+              <TouchableOpacity onPress={() => { setEditMode(false); onDuplicate(); }} style={styles.dupBtn}>
+                <Text style={styles.dupBtnText}>⧉</Text>
+              </TouchableOpacity>
+            )}
+            {onDelete && (
+              <TouchableOpacity
+                onPress={() => Alert.alert('Eliminar', `¿Eliminar "${exercise.name}"?`, [
+                  { text: 'Cancelar', style: 'cancel' },
+                  { text: 'Eliminar', style: 'destructive', onPress: () => { setEditMode(false); onDelete!(); } },
+                ])}
+                style={styles.delBtn}
+              >
+                <Text style={styles.delBtnText}>✕</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity onPress={() => setEditMode(false)} style={styles.doneBtn}>
+              <Text style={styles.doneBtnText}>LISTO ✓</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={styles.fieldGroup}>
@@ -256,6 +279,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
   },
+  editActions: {
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+  },
   editTitle: {
     color: theme.textMuted,
     fontSize: 12,
@@ -273,6 +301,29 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '800',
     letterSpacing: 1,
+  },
+  dupBtn: {
+    borderWidth: 1,
+    borderColor: theme.borderColor,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  dupBtnText: {
+    color: theme.textMuted,
+    fontSize: 14,
+  },
+  delBtn: {
+    borderWidth: 1,
+    borderColor: theme.danger,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  delBtnText: {
+    color: theme.danger,
+    fontSize: 13,
+    fontWeight: '700',
   },
   fieldGroup: {
     marginBottom: 12,

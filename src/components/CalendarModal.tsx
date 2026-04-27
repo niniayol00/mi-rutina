@@ -8,7 +8,7 @@ interface CalendarModalProps {
   onClose: () => void;
 }
 
-const DAYS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+const DAYS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 const MONTHS = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
@@ -19,7 +19,9 @@ export default function CalendarModal({ visible, trainingDates, onClose }: Calen
   const year = today.getFullYear();
   const month = today.getMonth();
 
-  const firstDay = new Date(year, month, 1).getDay();
+  // Week starts on Monday: convert Sunday(0) to 7, then subtract 1
+  const rawFirstDay = new Date(year, month, 1).getDay();
+  const firstDay = rawFirstDay === 0 ? 6 : rawFirstDay - 1;
   const daysInMonth = new Date(year, month + 1, 0).getDate();
 
   const cells: (number | null)[] = [];

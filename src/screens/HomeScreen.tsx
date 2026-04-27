@@ -1,18 +1,23 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, RefreshControl,
+  View, Text, ScrollView, TouchableOpacity, StyleSheet,
+  RefreshControl, TextInput,
 } from 'react-native';
 import { useFocusEffect, router } from 'expo-router';
-import { Routine, AppSettings, Exercise } from '../types';
+import { Routine, AppSettings, Exercise, WorkoutSession } from '../types';
 import {
   loadRoutine, loadSettings, saveRoutine, checkAndResetIfNewDay,
-  loadTrainingDates, saveTrainingDate,
+  loadTrainingDates, saveTrainingDate, loadProgress, saveProgress, saveSession,
 } from '../utils/storage';
 import { theme } from '../constants/theme';
 import TimerModal from '../components/TimerModal';
 import CalendarModal from '../components/CalendarModal';
 import AddExerciseModal from '../components/AddExerciseModal';
 import DraggableExerciseList from '../components/DraggableExerciseList';
+
+function generateId() {
+  return Math.random().toString(36).substring(2, 9);
+}
 
 export default function HomeScreen() {
   const [routine, setRoutine] = useState<Routine | null>(null);
@@ -24,6 +29,8 @@ export default function HomeScreen() {
   const [addVisible, setAddVisible] = useState(false);
   const [trainingDates, setTrainingDates] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [sessionStart] = useState<Date>(new Date());
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const completedShown = useRef(false);
 
@@ -45,20 +52,55 @@ export default function HomeScreen() {
     saveTimeout.current = setTimeout(() => saveRoutine(updated), 400);
   };
 
+  const getToday = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+
   const checkAllCompleted = useCallback(async (updated: Routine) => {
     if (completedShown.current) return;
     const allDone = updated.sections.every((s) =>
       s.exercises.every((ex) => ex.seriesCompleted.every(Boolean))
     );
-    if (allDone) {
-      completedShown.current = true;
-      const today = new Date();
-      const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-      const updatedDates = await saveTrainingDate(dateStr);
-      setTrainingDates(updatedDates);
-      setTimeout(() => setCalendarVisible(true), 600);
-    }
-  }, []);
+    if (!allDone) return;
+    completedShown.current = true;
+
+    const endTime = new Date();
+    const durationMinutes = Math.round((endTime.getTime() - sessionStart.getTime()) / 60000);
+    let totalSeries = 0, totalWeight = 0;
+    updated.sections.forEach((s) => s.exercises.forEach((ex) => {
+      totalSeries += ex.series;
+      if (ex.weight) {
+        const kg = parseFloat(ex.weight);
+        if (!isNaN(kg)) totalWeight += kg * ex.series;
+      }
+    }));
+
+    const today = getToday();
+    const session: WorkoutSession = {
+      date: today,
+      startTime: sessionStart.toISOString(),
+      endTime: endTime.toISOString(),
+      durationMinutes,
+      totalSeries,
+      totalWeight,
+      routineName: updated.name,
+    };
+    await saveSession(session);
+
+    const progress = await loadProgress();
+    await saveProgress({
+      totalWorkouts: progress.totalWorkouts + 1,
+      totalSeries: progress.totalSeries + totalSeries,
+      totalWeight: progress.totalWeight + totalWeight,
+      totalMinutes: progress.totalMinutes + durationMinutes,
+      lastWorkoutDate: today,
+    });
+
+    const updatedDates = await saveTrainingDate(today);
+    setTrainingDates(updatedDates);
+    setTimeout(() => setCalendarVisible(true), 600);
+  }, [sessionStart]);
 
   const toggleSeries = (sectionIdx: number, exerciseIdx: number, seriesIdx: number) => {
     if (!routine) return;
@@ -104,6 +146,44 @@ export default function HomeScreen() {
     persistRoutine(updated);
   };
 
+  const duplicateExercise = (sectionIdx: number, exerciseIdx: number) => {
+    if (!routine) return;
+    const updated: Routine = {
+      ...routine,
+      sections: routine.sections.map((section, si) => {
+        if (si !== sectionIdx) return section;
+        const exercises = [...section.exercises];
+        const original = exercises[exerciseIdx];
+        const copy: Exercise = {
+          ...original,
+          id: generateId(),
+          name: `${original.name} (copia)`,
+          seriesCompleted: Array(original.series).fill(false),
+        };
+        exercises.splice(exerciseIdx + 1, 0, copy);
+        return { ...section, exercises };
+      }),
+    };
+    setRoutine(updated);
+    persistRoutine(updated);
+  };
+
+  const deleteExercise = (sectionIdx: number, exerciseIdx: number) => {
+    if (!routine) return;
+    const updated: Routine = {
+      ...routine,
+      sections: routine.sections.map((section, si) => {
+        if (si !== sectionIdx) return section;
+        return {
+          ...section,
+          exercises: section.exercises.filter((_, ei) => ei !== exerciseIdx),
+        };
+      }),
+    };
+    setRoutine(updated);
+    persistRoutine(updated);
+  };
+
   const reorderExercise = (sectionIdx: number, fromIdx: number, toIdx: number) => {
     if (!routine) return;
     const updated: Routine = {
@@ -129,6 +209,13 @@ export default function HomeScreen() {
         return { ...section, exercises: [...section.exercises, exercise] };
       }),
     };
+    setRoutine(updated);
+    persistRoutine(updated);
+  };
+
+  const updateTitle = (newName: string) => {
+    if (!routine || !newName.trim()) return;
+    const updated = { ...routine, name: newName };
     setRoutine(updated);
     persistRoutine(updated);
   };
@@ -165,7 +252,20 @@ export default function HomeScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.title}>{routine.name}</Text>
+          {editingTitle ? (
+            <TextInput
+              style={styles.titleInput}
+              value={routine.name}
+              onChangeText={updateTitle}
+              onBlur={() => setEditingTitle(false)}
+              autoFocus
+              selectTextOnFocus
+            />
+          ) : (
+            <TouchableOpacity onPress={() => setEditingTitle(true)}>
+              <Text style={styles.title}>{routine.name} ✏️</Text>
+            </TouchableOpacity>
+          )}
           <Text style={styles.subtitle}>{routine.frequency}</Text>
         </View>
         <TouchableOpacity style={styles.newRoutineBtn} onPress={() => router.push('/input')}>
@@ -202,6 +302,8 @@ export default function HomeScreen() {
               onEdit={(ei, field, value) => editExerciseField(si, ei, field, value)}
               onTimerStart={startTimer}
               onReorder={(from, to) => reorderExercise(si, from, to)}
+              onDuplicate={(ei) => duplicateExercise(si, ei)}
+              onDelete={(ei) => deleteExercise(si, ei)}
             />
           </View>
         ))}
@@ -255,20 +357,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20, paddingTop: 20, paddingBottom: 12,
   },
   title: { color: theme.textColor, fontSize: theme.fontSize.title, fontWeight: '700' },
+  titleInput: {
+    color: theme.textColor, fontSize: theme.fontSize.title, fontWeight: '700',
+    borderBottomWidth: 2, borderBottomColor: theme.timerColor, paddingVertical: 2,
+  },
   subtitle: { color: theme.textMuted, fontSize: theme.fontSize.small, marginTop: 2 },
   newRoutineBtn: {
-    borderWidth: 1,
-    borderColor: theme.borderColor,
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    marginRight: 10,
+    borderWidth: 1, borderColor: theme.borderColor, borderRadius: 10,
+    paddingHorizontal: 10, paddingVertical: 6, marginRight: 10,
   },
-  newRoutineText: {
-    color: theme.textMuted,
-    fontSize: 12,
-    fontWeight: '600',
-  },
+  newRoutineText: { color: theme.textMuted, fontSize: 12, fontWeight: '600' },
   progressBadge: {
     alignItems: 'center', backgroundColor: theme.cardBackground,
     borderRadius: 12, paddingHorizontal: 16, paddingVertical: 8,

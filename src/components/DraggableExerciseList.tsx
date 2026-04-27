@@ -14,11 +14,14 @@ interface Props {
   onEdit: (ei: number, field: string, value: string) => void;
   onTimerStart: (seconds: number, workSeconds?: number) => void;
   onReorder: (fromIdx: number, toIdx: number) => void;
+  onDuplicate: (exerciseIdx: number) => void;
+  onDelete: (exerciseIdx: number) => void;
 }
 
 export default function DraggableExerciseList({
   section, sectionIdx, editable, vibrationOnCheck,
   autoStartTimer, onToggleSeries, onEdit, onTimerStart, onReorder,
+  onDuplicate, onDelete,
 }: Props) {
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [overIdx, setOverIdx] = useState<number | null>(null);
@@ -98,6 +101,8 @@ export default function DraggableExerciseList({
                 onToggleSeries={(si) => onToggleSeries(ei, si)}
                 onEdit={(field, value) => onEdit(ei, field as string, value)}
                 onTimerStart={onTimerStart}
+                onDuplicate={() => onDuplicate(ei)}
+                onDelete={() => onDelete(ei)}
               />
             </View>
           </View>

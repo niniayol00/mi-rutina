@@ -35,3 +35,21 @@ export interface AppSettings {
   editableFields: boolean;
   lastResetDate: string;
 }
+
+export interface WorkoutSession {
+  date: string;
+  startTime: string;
+  endTime: string;
+  durationMinutes: number;
+  totalSeries: number;
+  totalWeight: number;
+  routineName: string;
+}
+
+export interface ProgressData {
+  totalWorkouts: number;
+  totalSeries: number;
+  totalWeight: number;
+  totalMinutes: number;
+  lastWorkoutDate: string | null;
+}

@@ -1,12 +1,14 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Routine, AppSettings } from '../types';
+import { Routine, AppSettings, WorkoutSession, ProgressData } from '../types';
 import { defaultRoutine } from '../data/routineData';
 
 const ROUTINE_KEY = 'mi_rutina_routine';
 const SETTINGS_KEY = 'mi_rutina_settings';
 const DATA_VERSION_KEY = 'mi_rutina_version';
 const TRAINING_DATES_KEY = 'mi_rutina_training_dates';
-const CURRENT_VERSION = '4';
+const SESSIONS_KEY = 'mi_rutina_sessions';
+const PROGRESS_KEY = 'mi_rutina_progress';
+const CURRENT_VERSION = '5';
 
 export const defaultSettings: AppSettings = {
   autoStartTimerOnCheck: true,
@@ -18,6 +20,14 @@ export const defaultSettings: AppSettings = {
   soundOnFinish: true,
   editableFields: true,
   lastResetDate: new Date().toDateString(),
+};
+
+export const defaultProgress: ProgressData = {
+  totalWorkouts: 0,
+  totalSeries: 0,
+  totalWeight: 0,
+  totalMinutes: 0,
+  lastWorkoutDate: null,
 };
 
 export async function loadRoutine(): Promise<Routine> {
@@ -84,6 +94,34 @@ export async function saveTrainingDate(dateStr: string): Promise<string[]> {
     return updated;
   }
   return dates;
+}
+
+export async function loadSessions(): Promise<WorkoutSession[]> {
+  try {
+    const raw = await AsyncStorage.getItem(SESSIONS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function saveSession(session: WorkoutSession): Promise<void> {
+  const sessions = await loadSessions();
+  const updated = [session, ...sessions].slice(0, 365);
+  await AsyncStorage.setItem(SESSIONS_KEY, JSON.stringify(updated));
+}
+
+export async function loadProgress(): Promise<ProgressData> {
+  try {
+    const raw = await AsyncStorage.getItem(PROGRESS_KEY);
+    return raw ? { ...defaultProgress, ...JSON.parse(raw) } : defaultProgress;
+  } catch {
+    return defaultProgress;
+  }
+}
+
+export async function saveProgress(progress: ProgressData): Promise<void> {
+  await AsyncStorage.setItem(PROGRESS_KEY, JSON.stringify(progress));
 }
 
 export async function checkAndResetIfNewDay(
