@@ -184,6 +184,24 @@ export default function HomeScreen() {
     persistRoutine(updated);
   };
 
+  const saveExercise = (sectionIdx: number, exerciseIdx: number, updated: Exercise) => {
+    if (!routine) return;
+    const updatedRoutine: Routine = {
+      ...routine,
+      sections: routine.sections.map((section, si) => {
+        if (si !== sectionIdx) return section;
+        return {
+          ...section,
+          exercises: section.exercises.map((ex, ei) =>
+            ei === exerciseIdx ? updated : ex
+          ),
+        };
+      }),
+    };
+    setRoutine(updatedRoutine);
+    persistRoutine(updatedRoutine);
+  };
+
   const reorderExercise = (sectionIdx: number, fromIdx: number, toIdx: number) => {
     if (!routine) return;
     const updated: Routine = {
@@ -300,6 +318,7 @@ export default function HomeScreen() {
               autoStartTimer={settings.autoStartTimerOnCheck}
               onToggleSeries={(ei, si2) => toggleSeries(si, ei, si2)}
               onEdit={(ei, field, value) => editExerciseField(si, ei, field, value)}
+              onSaveAll={(ei, updated) => saveExercise(si, ei, updated)}
               onTimerStart={startTimer}
               onReorder={(from, to) => reorderExercise(si, from, to)}
               onDuplicate={(ei) => duplicateExercise(si, ei)}

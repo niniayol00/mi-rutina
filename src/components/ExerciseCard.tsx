@@ -12,6 +12,7 @@ interface ExerciseCardProps {
   vibrationOnCheck: boolean;
   onToggleSeries: (seriesIndex: number) => void;
   onEdit: (field: keyof Exercise, value: string) => void;
+  onSaveAll: (updated: Exercise) => void;
   onTimerStart: (seconds: number, workSeconds?: number) => void;
   autoStartTimer: boolean;
   onDuplicate?: () => void;
@@ -24,6 +25,7 @@ export default function ExerciseCard({
   vibrationOnCheck,
   onToggleSeries,
   onEdit,
+  onSaveAll,
   onTimerStart,
   autoStartTimer,
   onDuplicate,
@@ -53,15 +55,18 @@ export default function ExerciseCard({
 
   const saveAndClose = () => {
     const seriesNum = Math.max(1, parseInt(localSeries) || 1);
-    onEdit('name', localName || exercise.name);
-    onEdit('reps', localReps);
-    onEdit('weight', localWeight);
-    onEdit('restSeconds', String(parseInt(localRest) || 0));
-    // Solo actualiza series y casilleros si cambió el número
-    if (seriesNum !== exercise.series) {
-      onEdit('series' as keyof Exercise, String(seriesNum));
-      onEdit('seriesCompleted' as keyof Exercise, JSON.stringify(Array(seriesNum).fill(false)));
-    }
+    const updatedExercise: Exercise = {
+      ...exercise,
+      name: localName.trim() || exercise.name,
+      reps: localReps,
+      weight: localWeight || undefined,
+      restSeconds: parseInt(localRest) || 0,
+      series: seriesNum,
+      seriesCompleted: seriesNum !== exercise.series
+        ? Array(seriesNum).fill(false)
+        : exercise.seriesCompleted,
+    };
+    onSaveAll(updatedExercise);
     setEditMode(false);
   };
 

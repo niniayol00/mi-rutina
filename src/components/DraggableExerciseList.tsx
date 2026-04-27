@@ -12,6 +12,7 @@ interface Props {
   autoStartTimer: boolean;
   onToggleSeries: (ei: number, si: number) => void;
   onEdit: (ei: number, field: string, value: string) => void;
+  onSaveAll: (ei: number, updated: Exercise) => void;
   onTimerStart: (seconds: number, workSeconds?: number) => void;
   onReorder: (fromIdx: number, toIdx: number) => void;
   onDuplicate: (exerciseIdx: number) => void;
@@ -20,7 +21,7 @@ interface Props {
 
 export default function DraggableExerciseList({
   section, sectionIdx, editable, vibrationOnCheck,
-  autoStartTimer, onToggleSeries, onEdit, onTimerStart, onReorder,
+  autoStartTimer, onToggleSeries, onEdit, onSaveAll, onTimerStart, onReorder,
   onDuplicate, onDelete,
 }: Props) {
   const [dragIdx, setDragIdx] = useState<number | null>(null);
@@ -100,6 +101,7 @@ export default function DraggableExerciseList({
                 autoStartTimer={autoStartTimer}
                 onToggleSeries={(si) => onToggleSeries(ei, si)}
                 onEdit={(field, value) => onEdit(ei, field as string, value)}
+                onSaveAll={(updated) => onSaveAll(ei, updated)}
                 onTimerStart={onTimerStart}
                 onDuplicate={() => onDuplicate(ei)}
                 onDelete={() => onDelete(ei)}
