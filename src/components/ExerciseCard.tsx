@@ -67,7 +67,7 @@ export default function ExerciseCard({
                 ])}
                 style={styles.delBtn}
               >
-                <Text style={styles.delBtnText}>✕</Text>
+                <Text style={styles.delBtnText}>🗑️</Text>
               </TouchableOpacity>
             )}
             <TouchableOpacity onPress={() => setEditMode(false)} style={styles.doneBtn}>
