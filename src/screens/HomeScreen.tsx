@@ -261,18 +261,23 @@ export default function HomeScreen() {
 
   const handleVerCalendario = async () => {
     if (!routine) return;
-    // Cancela saves pendientes
     if (saveTimeout.current) {
       clearTimeout(saveTimeout.current);
       saveTimeout.current = null;
     }
-    // Resetea ANTES de abrir el calendario — cuando el usuario cierra el
-    // calendario la lista ya está limpia porque el modal la cubre mientras resetea
     const clean = resetAllSeries(routine);
-    setRoutine(clean);
+    // Guarda el estado limpio en storage como fuente de verdad
     await saveRoutine(clean);
     completedShown.current = false;
     setCalendarVisible(true);
+  };
+
+  const handleCerrarCalendario = async () => {
+    setCalendarVisible(false);
+    // Lee el estado limpio desde storage y actualiza React —
+    // esto garantiza que lo que se muestra coincide con lo guardado
+    const fresh = await loadRoutine();
+    setRoutine(fresh);
   };
 
   const startTimer = (seconds: number, workSeconds?: number) => {
@@ -393,7 +398,7 @@ export default function HomeScreen() {
       <CalendarModal
         visible={calendarVisible}
         trainingDates={trainingDates}
-        onClose={() => setCalendarVisible(false)}
+        onClose={handleCerrarCalendario}
       />
 
       <AddExerciseModal
