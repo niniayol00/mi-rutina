@@ -259,15 +259,18 @@ export default function HomeScreen() {
     persistRoutine(updated);
   };
 
-  const finalizarRutina = async () => {
+  const handleVerCalendario = async () => {
     if (!routine) return;
+    // Cancela saves pendientes
     if (saveTimeout.current) {
       clearTimeout(saveTimeout.current);
       saveTimeout.current = null;
     }
-    const resetRoutine = resetAllSeries(routine);
-    await saveRoutine(resetRoutine);
-    setRoutine(resetRoutine);
+    // Resetea ANTES de abrir el calendario — cuando el usuario cierra el
+    // calendario la lista ya está limpia porque el modal la cubre mientras resetea
+    const clean = resetAllSeries(routine);
+    setRoutine(clean);
+    await saveRoutine(clean);
     completedShown.current = false;
     setCalendarVisible(true);
   };
@@ -364,7 +367,7 @@ export default function HomeScreen() {
         {done === total && total > 0 && (
           <View style={styles.completeBanner}>
             <Text style={styles.completeText}>RUTINA COMPLETADA</Text>
-            <TouchableOpacity style={styles.verCalendarioBtn} onPress={() => setCalendarVisible(true)}>
+            <TouchableOpacity style={styles.verCalendarioBtn} onPress={handleVerCalendario}>
               <Text style={styles.verCalendarioBtnText}>VER CALENDARIO</Text>
             </TouchableOpacity>
           </View>
@@ -390,16 +393,7 @@ export default function HomeScreen() {
       <CalendarModal
         visible={calendarVisible}
         trainingDates={trainingDates}
-        onClose={() => {
-          setCalendarVisible(false);
-          setRoutine((prev) => {
-            if (!prev) return prev;
-            const clean = resetAllSeries(prev);
-            saveRoutine(clean);
-            return clean;
-          });
-          completedShown.current = false;
-        }}
+        onClose={() => setCalendarVisible(false)}
       />
 
       <AddExerciseModal
