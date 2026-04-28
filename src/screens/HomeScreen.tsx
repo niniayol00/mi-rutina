@@ -113,17 +113,14 @@ export default function HomeScreen() {
     const updatedDates = await saveTrainingDate(today);
     setTrainingDates(updatedDates);
 
-    // Cancela cualquier save pendiente de persistRoutine para evitar race condition
+    // Cancela cualquier save pendiente
     if (saveTimeout.current) {
       clearTimeout(saveTimeout.current);
       saveTimeout.current = null;
     }
 
-    const resetRoutine = resetAllSeries(updated);
-    await saveRoutine(resetRoutine);
-    setRoutine(resetRoutine);
-    completedShown.current = false;
-    setTimeout(() => setCalendarVisible(true), 300);
+    // NO resetea aqui — el reset ocurre cuando el usuario cierra el calendario
+    await saveRoutine(updated);
   }, [sessionStart]);
 
   const toggleSeries = (sectionIdx: number, exerciseIdx: number, seriesIdx: number) => {
@@ -365,10 +362,12 @@ export default function HomeScreen() {
         ))}
 
         {done === total && total > 0 && (
-          <TouchableOpacity style={styles.completeBanner} onPress={finalizarRutina}>
+          <View style={styles.completeBanner}>
             <Text style={styles.completeText}>RUTINA COMPLETADA</Text>
-            <Text style={styles.completeSub}>Tocar para guardar y limpiar</Text>
-          </TouchableOpacity>
+            <TouchableOpacity style={styles.verCalendarioBtn} onPress={() => setCalendarVisible(true)}>
+              <Text style={styles.verCalendarioBtnText}>VER CALENDARIO</Text>
+            </TouchableOpacity>
+          </View>
         )}
 
         <View style={{ height: 100 }} />
@@ -391,14 +390,15 @@ export default function HomeScreen() {
       <CalendarModal
         visible={calendarVisible}
         trainingDates={trainingDates}
-        onClose={async () => {
+        onClose={() => {
           setCalendarVisible(false);
-          if (routine) {
-            const clean = resetAllSeries(routine);
-            await saveRoutine(clean);
-            setRoutine(clean);
-            completedShown.current = false;
-          }
+          setRoutine((prev) => {
+            if (!prev) return prev;
+            const clean = resetAllSeries(prev);
+            saveRoutine(clean);
+            return clean;
+          });
+          completedShown.current = false;
         }}
       />
 
@@ -450,9 +450,21 @@ const styles = StyleSheet.create({
     color: theme.textMuted, fontSize: theme.fontSize.section,
     fontWeight: '600', letterSpacing: 2, marginBottom: 10, marginLeft: 2,
   },
-  completeBanner: { alignItems: 'center', paddingVertical: 24 },
+  completeBanner: { alignItems: 'center', paddingVertical: 24, gap: 14 },
   completeText: { color: theme.timerColor, fontSize: 18, fontWeight: '700', letterSpacing: 3 },
   completeSub: { color: theme.textMuted, fontSize: 12, marginTop: 4 },
+  verCalendarioBtn: {
+    backgroundColor: theme.timerColor,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 32,
+  },
+  verCalendarioBtnText: {
+    color: '#000',
+    fontWeight: '800',
+    fontSize: 14,
+    letterSpacing: 2,
+  },
   fab: {
     position: 'absolute', bottom: 32, right: 24,
     width: 52, height: 52, borderRadius: 26,
