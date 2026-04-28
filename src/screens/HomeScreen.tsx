@@ -391,7 +391,15 @@ export default function HomeScreen() {
       <CalendarModal
         visible={calendarVisible}
         trainingDates={trainingDates}
-        onClose={() => setCalendarVisible(false)}
+        onClose={async () => {
+          setCalendarVisible(false);
+          if (routine) {
+            const clean = resetAllSeries(routine);
+            await saveRoutine(clean);
+            setRoutine(clean);
+            completedShown.current = false;
+          }
+        }}
       />
 
       <AddExerciseModal
