@@ -8,6 +8,7 @@ import { Routine, AppSettings, Exercise, WorkoutSession } from '../types';
 import {
   loadRoutine, loadSettings, saveRoutine, checkAndResetIfNewDay,
   loadTrainingDates, saveTrainingDate, loadProgress, saveProgress, saveSession,
+  resetAllSeries,
 } from '../utils/storage';
 import { theme } from '../constants/theme';
 import TimerModal from '../components/TimerModal';
@@ -99,7 +100,14 @@ export default function HomeScreen() {
 
     const updatedDates = await saveTrainingDate(today);
     setTrainingDates(updatedDates);
-    setTimeout(() => setCalendarVisible(true), 600);
+
+    setTimeout(() => {
+      const resetRoutine = resetAllSeries(updated);
+      saveRoutine(resetRoutine);
+      setRoutine(resetRoutine);
+      completedShown.current = false;
+      setCalendarVisible(true);
+    }, 600);
   }, [sessionStart]);
 
   const toggleSeries = (sectionIdx: number, exerciseIdx: number, seriesIdx: number) => {
