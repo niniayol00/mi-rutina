@@ -2,13 +2,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Routine, AppSettings, WorkoutSession, ProgressData } from '../types';
 import { defaultRoutine } from '../data/routineData';
 
-const ROUTINE_KEY = 'mi_rutina_routine';
 const SETTINGS_KEY = 'mi_rutina_settings';
-const DATA_VERSION_KEY = 'mi_rutina_version';
 const TRAINING_DATES_KEY = 'mi_rutina_training_dates';
 const SESSIONS_KEY = 'mi_rutina_sessions';
 const PROGRESS_KEY = 'mi_rutina_progress';
-const CURRENT_VERSION = '5';
+const ALL_ROUTINES_KEY = 'mi_rutina_all_v2';
+const ACTIVE_ID_KEY = 'mi_rutina_active_id';
 
 export const defaultSettings: AppSettings = {
   autoStartTimerOnCheck: true,
@@ -30,25 +29,70 @@ export const defaultProgress: ProgressData = {
   lastWorkoutDate: null,
 };
 
-export async function loadRoutine(): Promise<Routine> {
+// ─── Multi-routine ───────────────────────────────────────────────
+
+export async function loadAllRoutines(): Promise<Record<string, Routine>> {
   try {
-    const version = await AsyncStorage.getItem(DATA_VERSION_KEY);
-    if (version !== CURRENT_VERSION) {
-      await AsyncStorage.setItem(ROUTINE_KEY, JSON.stringify(defaultRoutine));
-      await AsyncStorage.setItem(DATA_VERSION_KEY, CURRENT_VERSION);
-      return defaultRoutine;
-    }
-    const raw = await AsyncStorage.getItem(ROUTINE_KEY);
-    if (raw) return JSON.parse(raw) as Routine;
-    return defaultRoutine;
+    const raw = await AsyncStorage.getItem(ALL_ROUTINES_KEY);
+    if (raw) return JSON.parse(raw);
+    const seed: Record<string, Routine> = { [defaultRoutine.id]: defaultRoutine };
+    await AsyncStorage.setItem(ALL_ROUTINES_KEY, JSON.stringify(seed));
+    return seed;
   } catch {
-    return defaultRoutine;
+    return { [defaultRoutine.id]: defaultRoutine };
   }
 }
 
-export async function saveRoutine(routine: Routine): Promise<void> {
-  await AsyncStorage.setItem(ROUTINE_KEY, JSON.stringify(routine));
+export async function saveAllRoutines(routines: Record<string, Routine>): Promise<void> {
+  await AsyncStorage.setItem(ALL_ROUTINES_KEY, JSON.stringify(routines));
 }
+
+export async function loadActiveRoutineId(): Promise<string> {
+  try {
+    const id = await AsyncStorage.getItem(ACTIVE_ID_KEY);
+    return id || defaultRoutine.id;
+  } catch {
+    return defaultRoutine.id;
+  }
+}
+
+export async function saveActiveRoutineId(id: string): Promise<void> {
+  await AsyncStorage.setItem(ACTIVE_ID_KEY, id);
+}
+
+export async function addOrUpdateRoutine(routine: Routine): Promise<void> {
+  const all = await loadAllRoutines();
+  all[routine.id] = routine;
+  await saveAllRoutines(all);
+}
+
+export async function loadActiveRoutine(): Promise<Routine> {
+  const [all, activeId] = await Promise.all([loadAllRoutines(), loadActiveRoutineId()]);
+  return all[activeId] ?? Object.values(all)[0] ?? defaultRoutine;
+}
+
+export async function saveActiveRoutine(routine: Routine): Promise<void> {
+  const all = await loadAllRoutines();
+  all[routine.id] = routine;
+  await saveAllRoutines(all);
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────
+
+export function resetAllSeries(routine: Routine): Routine {
+  return {
+    ...routine,
+    sections: routine.sections.map((section) => ({
+      ...section,
+      exercises: section.exercises.map((ex) => ({
+        ...ex,
+        seriesCompleted: ex.seriesCompleted.map(() => false),
+      })),
+    })),
+  };
+}
+
+// ─── Settings ────────────────────────────────────────────────────
 
 export async function loadSettings(): Promise<AppSettings> {
   try {
@@ -64,18 +108,22 @@ export async function saveSettings(settings: AppSettings): Promise<void> {
   await AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
 }
 
-export function resetAllSeries(routine: Routine): Routine {
-  return {
-    ...routine,
-    sections: routine.sections.map((section) => ({
-      ...section,
-      exercises: section.exercises.map((ex) => ({
-        ...ex,
-        seriesCompleted: ex.seriesCompleted.map(() => false),
-      })),
-    })),
-  };
+export async function checkAndResetIfNewDay(
+  routine: Routine,
+  settings: AppSettings
+): Promise<{ routine: Routine; settings: AppSettings }> {
+  const today = new Date().toDateString();
+  if (settings.dailyResetSeries && settings.lastResetDate !== today) {
+    const resetRoutine = resetAllSeries(routine);
+    const newSettings = { ...settings, lastResetDate: today };
+    await saveActiveRoutine(resetRoutine);
+    await saveSettings(newSettings);
+    return { routine: resetRoutine, settings: newSettings };
+  }
+  return { routine, settings };
 }
+
+// ─── Tracking ────────────────────────────────────────────────────
 
 export async function loadTrainingDates(): Promise<string[]> {
   try {
@@ -122,19 +170,4 @@ export async function loadProgress(): Promise<ProgressData> {
 
 export async function saveProgress(progress: ProgressData): Promise<void> {
   await AsyncStorage.setItem(PROGRESS_KEY, JSON.stringify(progress));
-}
-
-export async function checkAndResetIfNewDay(
-  routine: Routine,
-  settings: AppSettings
-): Promise<{ routine: Routine; settings: AppSettings; wasReset: boolean }> {
-  const today = new Date().toDateString();
-  if (settings.dailyResetSeries && settings.lastResetDate !== today) {
-    const resetRoutine = resetAllSeries(routine);
-    const newSettings = { ...settings, lastResetDate: today };
-    await saveRoutine(resetRoutine);
-    await saveSettings(newSettings);
-    return { routine: resetRoutine, settings: newSettings, wasReset: true };
-  }
-  return { routine, settings, wasReset: false };
 }

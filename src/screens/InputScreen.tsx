@@ -13,7 +13,7 @@ import {
 import { router } from 'expo-router';
 import { theme } from '../constants/theme';
 import { parseRoutineText } from '../utils/parser';
-import { loadRoutine, saveRoutine } from '../utils/storage';
+import { loadAllRoutines, saveAllRoutines, saveActiveRoutineId } from '../utils/storage';
 import { Section, Exercise } from '../types';
 
 export default function InputScreen() {
@@ -34,13 +34,19 @@ export default function InputScreen() {
 
   const handleSave = async () => {
     if (!preview) return;
-    const existing = await loadRoutine();
+    const newId = `rutina_${Date.now()}`;
     const newRoutine = {
-      ...existing,
+      id: newId,
       name: routineName,
+      frequency: '',
+      startDate: new Date().toISOString().split('T')[0],
+      renewDate: '',
       sections: preview,
     };
-    await saveRoutine(newRoutine);
+    const all = await loadAllRoutines();
+    all[newId] = newRoutine;
+    await saveAllRoutines(all);
+    await saveActiveRoutineId(newId);
     router.replace('/');
   };
 

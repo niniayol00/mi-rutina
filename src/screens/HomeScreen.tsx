@@ -1,14 +1,15 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  RefreshControl, TextInput,
+  RefreshControl, TextInput, Animated,
 } from 'react-native';
 import { useFocusEffect, router } from 'expo-router';
 import { Routine, AppSettings, Exercise, WorkoutSession } from '../types';
 import {
-  loadRoutine, loadSettings, saveRoutine, checkAndResetIfNewDay,
-  loadTrainingDates, saveTrainingDate, loadProgress, saveProgress, saveSession,
-  resetAllSeries,
+  loadAllRoutines, saveAllRoutines, loadActiveRoutineId, saveActiveRoutineId,
+  loadActiveRoutine, saveActiveRoutine, loadSettings, saveSettings,
+  checkAndResetIfNewDay, loadTrainingDates, saveTrainingDate,
+  loadProgress, saveProgress, saveSession, resetAllSeries,
 } from '../utils/storage';
 import { theme } from '../constants/theme';
 import TimerModal from '../components/TimerModal';
@@ -21,7 +22,8 @@ function generateId() {
 }
 
 export default function HomeScreen() {
-  const [routine, setRoutine] = useState<Routine | null>(null);
+  const [allRoutines, setAllRoutines] = useState<Record<string, Routine>>({});
+  const [activeId, setActiveId] = useState<string>('');
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [timerVisible, setTimerVisible] = useState(false);
   const [timerSeconds, setTimerSeconds] = useState(30);
@@ -32,27 +34,49 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [editingTitle, setEditingTitle] = useState(false);
   const [sessionStart] = useState<Date>(new Date());
+
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const completedShown = useRef(false);
+  const listOpacity = useRef(new Animated.Value(1)).current;
+
+  const routine = allRoutines[activeId] ?? null;
+
+  // ─── Load ───────────────────────────────────────────────────────
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [r, s, dates] = await Promise.all([loadRoutine(), loadSettings(), loadTrainingDates()]);
-    const { routine: checked, settings: checkedSettings } = await checkAndResetIfNewDay(r, s);
+    const [all, activeIdRaw, s, dates] = await Promise.all([
+      loadAllRoutines(), loadActiveRoutineId(), loadSettings(), loadTrainingDates(),
+    ]);
 
-    // Si al cargar todos los ejercicios están completos, limpiar el estado directamente
-    const allDoneOnLoad = checked.sections.every((sec) =>
-      sec.exercises.every((ex) => ex.seriesCompleted.every(Boolean))
-    );
-    if (allDoneOnLoad && checked.sections.some((s) => s.exercises.length > 0)) {
-      const clean = resetAllSeries(checked);
-      await saveRoutine(clean);
-      setRoutine(clean);
-    } else {
-      setRoutine(checked);
+    const currentId = (all[activeIdRaw] ? activeIdRaw : Object.keys(all)[0]) ?? '';
+    const current = all[currentId];
+
+    let finalAll = all;
+    let finalSettings = s;
+
+    if (current) {
+      const { routine: checked, settings: cs } = await checkAndResetIfNewDay(current, s);
+      finalAll = { ...all, [currentId]: checked };
+      finalSettings = cs;
     }
 
-    setSettings(checkedSettings);
+    // Si la rutina activa tiene todos los ejercicios completos, limpiarla
+    const active = finalAll[currentId];
+    if (active) {
+      const allDone = active.sections.every((sec) =>
+        sec.exercises.every((ex) => ex.seriesCompleted.every(Boolean))
+      );
+      if (allDone && active.sections.some((s) => s.exercises.length > 0)) {
+        const clean = resetAllSeries(active);
+        finalAll = { ...finalAll, [currentId]: clean };
+        await saveAllRoutines(finalAll);
+      }
+    }
+
+    setAllRoutines(finalAll);
+    setActiveId(currentId);
+    setSettings(finalSettings);
     setTrainingDates(dates);
     completedShown.current = false;
     setLoading(false);
@@ -60,10 +84,20 @@ export default function HomeScreen() {
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
+  // ─── Persist ────────────────────────────────────────────────────
+
   const persistRoutine = (updated: Routine) => {
     if (saveTimeout.current) clearTimeout(saveTimeout.current);
-    saveTimeout.current = setTimeout(() => saveRoutine(updated), 400);
+    saveTimeout.current = setTimeout(() => saveActiveRoutine(updated), 400);
   };
+
+  const updateAllRoutines = (updated: Routine) => {
+    const newAll = { ...allRoutines, [updated.id]: updated };
+    setAllRoutines(newAll);
+    persistRoutine(updated);
+  };
+
+  // ─── Completion ─────────────────────────────────────────────────
 
   const getToday = () => {
     const d = new Date();
@@ -91,16 +125,11 @@ export default function HomeScreen() {
 
     const today = getToday();
     const session: WorkoutSession = {
-      date: today,
-      startTime: sessionStart.toISOString(),
-      endTime: endTime.toISOString(),
-      durationMinutes,
-      totalSeries,
-      totalWeight,
-      routineName: updated.name,
+      date: today, startTime: sessionStart.toISOString(),
+      endTime: endTime.toISOString(), durationMinutes,
+      totalSeries, totalWeight, routineName: updated.name,
     };
     await saveSession(session);
-
     const progress = await loadProgress();
     await saveProgress({
       totalWorkouts: progress.totalWorkouts + 1,
@@ -109,19 +138,38 @@ export default function HomeScreen() {
       totalMinutes: progress.totalMinutes + durationMinutes,
       lastWorkoutDate: today,
     });
-
     const updatedDates = await saveTrainingDate(today);
     setTrainingDates(updatedDates);
-
-    // Cancela cualquier save pendiente
-    if (saveTimeout.current) {
-      clearTimeout(saveTimeout.current);
-      saveTimeout.current = null;
-    }
-
-    // NO resetea aqui — el reset ocurre cuando el usuario cierra el calendario
-    await saveRoutine(updated);
   }, [sessionStart]);
+
+  // ─── handleRoutineCompletion ─────────────────────────────────────
+
+  const handleRoutineCompletion = async (action: 'view_calendar' | 'close_calendar') => {
+    if (action === 'view_calendar') {
+      if (!routine) return;
+      if (saveTimeout.current) { clearTimeout(saveTimeout.current); saveTimeout.current = null; }
+      // Guarda estado limpio (preserva pesos) como fuente de verdad
+      const clean = resetAllSeries(routine);
+      const newAll = { ...allRoutines, [clean.id]: clean };
+      await saveAllRoutines(newAll);
+      completedShown.current = false;
+      setCalendarVisible(true);
+    } else {
+      setCalendarVisible(false);
+      // Animación: fade out → cargar desde storage → fade in
+      Animated.timing(listOpacity, {
+        toValue: 0, duration: 300, useNativeDriver: true,
+      }).start(async () => {
+        const freshAll = await loadAllRoutines();
+        setAllRoutines(freshAll);
+        Animated.timing(listOpacity, {
+          toValue: 1, duration: 300, useNativeDriver: true,
+        }).start();
+      });
+    }
+  };
+
+  // ─── Exercise actions ────────────────────────────────────────────
 
   const toggleSeries = (sectionIdx: number, exerciseIdx: number, seriesIdx: number) => {
     if (!routine) return;
@@ -140,8 +188,7 @@ export default function HomeScreen() {
         };
       }),
     };
-    setRoutine(updated);
-    persistRoutine(updated);
+    updateAllRoutines(updated);
     checkAllCompleted(updated);
   };
 
@@ -163,46 +210,7 @@ export default function HomeScreen() {
         };
       }),
     };
-    setRoutine(updated);
-    persistRoutine(updated);
-  };
-
-  const duplicateExercise = (sectionIdx: number, exerciseIdx: number) => {
-    if (!routine) return;
-    const updated: Routine = {
-      ...routine,
-      sections: routine.sections.map((section, si) => {
-        if (si !== sectionIdx) return section;
-        const exercises = [...section.exercises];
-        const original = exercises[exerciseIdx];
-        const copy: Exercise = {
-          ...original,
-          id: generateId(),
-          name: `${original.name} (copia)`,
-          seriesCompleted: Array(original.series).fill(false),
-        };
-        exercises.splice(exerciseIdx + 1, 0, copy);
-        return { ...section, exercises };
-      }),
-    };
-    setRoutine(updated);
-    persistRoutine(updated);
-  };
-
-  const deleteExercise = (sectionIdx: number, exerciseIdx: number) => {
-    if (!routine) return;
-    const updated: Routine = {
-      ...routine,
-      sections: routine.sections.map((section, si) => {
-        if (si !== sectionIdx) return section;
-        return {
-          ...section,
-          exercises: section.exercises.filter((_, ei) => ei !== exerciseIdx),
-        };
-      }),
-    };
-    setRoutine(updated);
-    persistRoutine(updated);
+    updateAllRoutines(updated);
   };
 
   const saveExercise = (sectionIdx: number, exerciseIdx: number, updated: Exercise) => {
@@ -213,14 +221,42 @@ export default function HomeScreen() {
         if (si !== sectionIdx) return section;
         return {
           ...section,
-          exercises: section.exercises.map((ex, ei) =>
-            ei === exerciseIdx ? updated : ex
-          ),
+          exercises: section.exercises.map((ex, ei) => ei === exerciseIdx ? updated : ex),
         };
       }),
     };
-    setRoutine(updatedRoutine);
-    persistRoutine(updatedRoutine);
+    updateAllRoutines(updatedRoutine);
+  };
+
+  const duplicateExercise = (sectionIdx: number, exerciseIdx: number) => {
+    if (!routine) return;
+    const updated: Routine = {
+      ...routine,
+      sections: routine.sections.map((section, si) => {
+        if (si !== sectionIdx) return section;
+        const exercises = [...section.exercises];
+        const original = exercises[exerciseIdx];
+        exercises.splice(exerciseIdx + 1, 0, {
+          ...original, id: generateId(),
+          name: `${original.name} (copia)`,
+          seriesCompleted: Array(original.series).fill(false),
+        });
+        return { ...section, exercises };
+      }),
+    };
+    updateAllRoutines(updated);
+  };
+
+  const deleteExercise = (sectionIdx: number, exerciseIdx: number) => {
+    if (!routine) return;
+    const updated: Routine = {
+      ...routine,
+      sections: routine.sections.map((section, si) => {
+        if (si !== sectionIdx) return section;
+        return { ...section, exercises: section.exercises.filter((_, ei) => ei !== exerciseIdx) };
+      }),
+    };
+    updateAllRoutines(updated);
   };
 
   const reorderExercise = (sectionIdx: number, fromIdx: number, toIdx: number) => {
@@ -235,8 +271,7 @@ export default function HomeScreen() {
         return { ...section, exercises };
       }),
     };
-    setRoutine(updated);
-    persistRoutine(updated);
+    updateAllRoutines(updated);
   };
 
   const addExercise = (sectionIdx: number, exercise: Exercise) => {
@@ -248,36 +283,17 @@ export default function HomeScreen() {
         return { ...section, exercises: [...section.exercises, exercise] };
       }),
     };
-    setRoutine(updated);
-    persistRoutine(updated);
+    updateAllRoutines(updated);
   };
 
   const updateTitle = (newName: string) => {
     if (!routine || !newName.trim()) return;
-    const updated = { ...routine, name: newName };
-    setRoutine(updated);
-    persistRoutine(updated);
+    updateAllRoutines({ ...routine, name: newName });
   };
 
-  const handleVerCalendario = async () => {
-    if (!routine) return;
-    if (saveTimeout.current) {
-      clearTimeout(saveTimeout.current);
-      saveTimeout.current = null;
-    }
-    const clean = resetAllSeries(routine);
-    // Guarda el estado limpio en storage como fuente de verdad
-    await saveRoutine(clean);
-    completedShown.current = false;
-    setCalendarVisible(true);
-  };
-
-  const handleCerrarCalendario = async () => {
-    setCalendarVisible(false);
-    // Lee el estado limpio desde storage y actualiza React —
-    // esto garantiza que lo que se muestra coincide con lo guardado
-    const fresh = await loadRoutine();
-    setRoutine(fresh);
+  const switchRoutine = async (id: string) => {
+    setActiveId(id);
+    await saveActiveRoutineId(id);
   };
 
   const startTimer = (seconds: number, workSeconds?: number) => {
@@ -286,7 +302,9 @@ export default function HomeScreen() {
     setTimerVisible(true);
   };
 
-  const progress = () => {
+  // ─── Progress ────────────────────────────────────────────────────
+
+  const { done, total } = (() => {
     if (!routine) return { done: 0, total: 0 };
     let done = 0, total = 0;
     routine.sections.forEach((s) =>
@@ -296,9 +314,9 @@ export default function HomeScreen() {
       })
     );
     return { done, total };
-  };
+  })();
 
-  const { done, total } = progress();
+  // ─── Render ──────────────────────────────────────────────────────
 
   if (loading || !routine || !settings) {
     return (
@@ -308,8 +326,11 @@ export default function HomeScreen() {
     );
   }
 
+  const routineList = Object.values(allRoutines);
+
   return (
     <View style={styles.container}>
+      {/* Header */}
       <View style={styles.header}>
         <View style={{ flex: 1 }}>
           {editingTitle ? (
@@ -318,8 +339,7 @@ export default function HomeScreen() {
               value={routine.name}
               onChangeText={updateTitle}
               onBlur={() => setEditingTitle(false)}
-              autoFocus
-              selectTextOnFocus
+              autoFocus selectTextOnFocus
             />
           ) : (
             <TouchableOpacity onPress={() => setEditingTitle(true)}>
@@ -337,14 +357,33 @@ export default function HomeScreen() {
         </View>
       </View>
 
+      {/* Routine switcher */}
+      {routineList.length > 1 && (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.switcherScroll} contentContainerStyle={styles.switcherContent}>
+          {routineList.map((r) => (
+            <TouchableOpacity
+              key={r.id}
+              style={[styles.switcherTab, r.id === activeId && styles.switcherTabActive]}
+              onPress={() => switchRoutine(r.id)}
+            >
+              <Text style={[styles.switcherText, r.id === activeId && styles.switcherTextActive]}>
+                {r.name}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      )}
+
+      {/* Progress bar */}
       {total > 0 && (
         <View style={styles.progressBarContainer}>
           <View style={[styles.progressBar, { width: `${(done / total) * 100}%` }]} />
         </View>
       )}
 
-      <ScrollView
-        style={styles.scroll}
+      {/* Exercise list with fade animation */}
+      <Animated.ScrollView
+        style={[styles.scroll, { opacity: listOpacity }]}
         contentContainerStyle={styles.scrollContent}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={load} tintColor={theme.timerColor} />}
         showsVerticalScrollIndicator={false}
@@ -371,15 +410,18 @@ export default function HomeScreen() {
 
         {done === total && total > 0 && (
           <View style={styles.completeBanner}>
-            <Text style={styles.completeText}>RUTINA COMPLETADA</Text>
-            <TouchableOpacity style={styles.verCalendarioBtn} onPress={handleVerCalendario}>
+            <Text style={styles.completeText}>RUTINA COMPLETADA 🎉</Text>
+            <TouchableOpacity
+              style={styles.verCalendarioBtn}
+              onPress={() => handleRoutineCompletion('view_calendar')}
+            >
               <Text style={styles.verCalendarioBtnText}>VER CALENDARIO</Text>
             </TouchableOpacity>
           </View>
         )}
 
         <View style={{ height: 100 }} />
-      </ScrollView>
+      </Animated.ScrollView>
 
       <TouchableOpacity style={styles.fab} onPress={() => setAddVisible(true)}>
         <Text style={styles.fabText}>+</Text>
@@ -398,7 +440,7 @@ export default function HomeScreen() {
       <CalendarModal
         visible={calendarVisible}
         trainingDates={trainingDates}
-        onClose={handleCerrarCalendario}
+        onClose={() => handleRoutineCompletion('close_calendar')}
       />
 
       <AddExerciseModal
@@ -437,9 +479,18 @@ const styles = StyleSheet.create({
   },
   progressText: { color: theme.timerColor, fontSize: 20, fontWeight: '700' },
   progressLabel: { color: theme.textMuted, fontSize: 10, letterSpacing: 1 },
+  switcherScroll: { maxHeight: 44 },
+  switcherContent: { paddingHorizontal: 16, gap: 8, alignItems: 'center' },
+  switcherTab: {
+    borderWidth: 1, borderColor: theme.borderColor, borderRadius: 20,
+    paddingHorizontal: 16, paddingVertical: 6,
+  },
+  switcherTabActive: { backgroundColor: theme.timerColor, borderColor: theme.timerColor },
+  switcherText: { color: theme.textMuted, fontSize: 13 },
+  switcherTextActive: { color: '#000', fontWeight: '700' },
   progressBarContainer: {
     height: 2, backgroundColor: theme.borderColor,
-    marginHorizontal: 20, borderRadius: 1, marginBottom: 8,
+    marginHorizontal: 20, borderRadius: 1, marginBottom: 8, marginTop: 4,
   },
   progressBar: { height: 2, backgroundColor: theme.timerColor, borderRadius: 1 },
   scroll: { flex: 1 },
@@ -450,25 +501,16 @@ const styles = StyleSheet.create({
     fontWeight: '600', letterSpacing: 2, marginBottom: 10, marginLeft: 2,
   },
   completeBanner: { alignItems: 'center', paddingVertical: 24, gap: 14 },
-  completeText: { color: theme.timerColor, fontSize: 18, fontWeight: '700', letterSpacing: 3 },
-  completeSub: { color: theme.textMuted, fontSize: 12, marginTop: 4 },
+  completeText: { color: theme.timerColor, fontSize: 18, fontWeight: '700', letterSpacing: 2 },
   verCalendarioBtn: {
-    backgroundColor: theme.timerColor,
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 32,
+    backgroundColor: theme.timerColor, borderRadius: 12,
+    paddingVertical: 12, paddingHorizontal: 32,
   },
-  verCalendarioBtnText: {
-    color: '#000',
-    fontWeight: '800',
-    fontSize: 14,
-    letterSpacing: 2,
-  },
+  verCalendarioBtnText: { color: '#000', fontWeight: '800', fontSize: 14, letterSpacing: 2 },
   fab: {
     position: 'absolute', bottom: 32, right: 24,
     width: 52, height: 52, borderRadius: 26,
-    backgroundColor: theme.timerColor,
-    justifyContent: 'center', alignItems: 'center',
+    backgroundColor: theme.timerColor, justifyContent: 'center', alignItems: 'center',
     shadowColor: theme.timerColor, shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.6, shadowRadius: 12, elevation: 8,
   },
