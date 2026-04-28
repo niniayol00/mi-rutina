@@ -101,13 +101,17 @@ export default function HomeScreen() {
     const updatedDates = await saveTrainingDate(today);
     setTrainingDates(updatedDates);
 
-    setTimeout(() => {
-      const resetRoutine = resetAllSeries(updated);
-      saveRoutine(resetRoutine);
-      setRoutine(resetRoutine);
-      completedShown.current = false;
-      setCalendarVisible(true);
-    }, 600);
+    // Cancela cualquier save pendiente de persistRoutine para evitar race condition
+    if (saveTimeout.current) {
+      clearTimeout(saveTimeout.current);
+      saveTimeout.current = null;
+    }
+
+    const resetRoutine = resetAllSeries(updated);
+    await saveRoutine(resetRoutine);
+    setRoutine(resetRoutine);
+    completedShown.current = false;
+    setTimeout(() => setCalendarVisible(true), 300);
   }, [sessionStart]);
 
   const toggleSeries = (sectionIdx: number, exerciseIdx: number, seriesIdx: number) => {
