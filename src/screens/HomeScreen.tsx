@@ -16,6 +16,8 @@ import TimerModal from '../components/TimerModal';
 import CalendarModal from '../components/CalendarModal';
 import AddExerciseModal from '../components/AddExerciseModal';
 import DraggableExerciseList from '../components/DraggableExerciseList';
+import FabMenu from '../components/FabMenu';
+import MotivationOverlay from '../components/MotivationOverlay';
 
 function generateId() {
   return Math.random().toString(36).substring(2, 9);
@@ -30,6 +32,8 @@ export default function HomeScreen() {
   const [timerWorkSeconds, setTimerWorkSeconds] = useState<number | undefined>(undefined);
   const [calendarVisible, setCalendarVisible] = useState(false);
   const [addVisible, setAddVisible] = useState(false);
+  const [fabMenuVisible, setFabMenuVisible] = useState(false);
+  const [motivationVisible, setMotivationVisible] = useState(false);
   const [trainingDates, setTrainingDates] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingTitle, setEditingTitle] = useState(false);
@@ -148,25 +152,54 @@ export default function HomeScreen() {
     if (action === 'view_calendar') {
       if (!routine) return;
       if (saveTimeout.current) { clearTimeout(saveTimeout.current); saveTimeout.current = null; }
-      // Guarda estado limpio (preserva pesos) como fuente de verdad
+      // Muestra overlay motivacional brevemente
+      setMotivationVisible(true);
+      // Guarda estado limpio preservando pesos como fuente de verdad
       const clean = resetAllSeries(routine);
       const newAll = { ...allRoutines, [clean.id]: clean };
       await saveAllRoutines(newAll);
       completedShown.current = false;
-      setCalendarVisible(true);
+      // Espera 1.8s, oculta overlay y abre calendario
+      setTimeout(() => {
+        setMotivationVisible(false);
+        setTimeout(() => setCalendarVisible(true), 200);
+      }, 1800);
     } else {
       setCalendarVisible(false);
-      // Animación: fade out → cargar desde storage → fade in
+      // Animación: fade out → cargar desde storage (fuente de verdad) → fade in
       Animated.timing(listOpacity, {
-        toValue: 0, duration: 300, useNativeDriver: true,
+        toValue: 0, duration: 250, useNativeDriver: true,
       }).start(async () => {
         const freshAll = await loadAllRoutines();
         setAllRoutines(freshAll);
         Animated.timing(listOpacity, {
-          toValue: 1, duration: 300, useNativeDriver: true,
+          toValue: 1, duration: 350, useNativeDriver: true,
         }).start();
       });
     }
+  };
+
+  const duplicateRoutine = async () => {
+    if (!routine) return;
+    const newId = `rutina_${Date.now()}`;
+    const copy: Routine = {
+      ...routine,
+      id: newId,
+      name: `${routine.name} (copia)`,
+      sections: routine.sections.map((sec) => ({
+        ...sec,
+        exercises: sec.exercises.map((ex) => ({
+          ...ex,
+          id: generateId(),
+          seriesCompleted: Array(ex.series).fill(false),
+        })),
+      })),
+    };
+    const newAll = { ...allRoutines, [newId]: copy };
+    await saveAllRoutines(newAll);
+    await saveActiveRoutineId(newId);
+    setAllRoutines(newAll);
+    setActiveId(newId);
   };
 
   // ─── Exercise actions ────────────────────────────────────────────
@@ -423,7 +456,7 @@ export default function HomeScreen() {
         <View style={{ height: 100 }} />
       </Animated.ScrollView>
 
-      <TouchableOpacity style={styles.fab} onPress={() => setAddVisible(true)}>
+      <TouchableOpacity style={styles.fab} onPress={() => setFabMenuVisible(true)}>
         <Text style={styles.fabText}>+</Text>
       </TouchableOpacity>
 
@@ -448,6 +481,19 @@ export default function HomeScreen() {
         sections={routine.sections}
         onAdd={addExercise}
         onClose={() => setAddVisible(false)}
+      />
+
+      <FabMenu
+        visible={fabMenuVisible}
+        onClose={() => setFabMenuVisible(false)}
+        onAddExercise={() => setAddVisible(true)}
+        onNewRoutine={() => router.push('/input')}
+        onDuplicateRoutine={duplicateRoutine}
+      />
+
+      <MotivationOverlay
+        visible={motivationVisible}
+        routineName={routine.name}
       />
     </View>
   );

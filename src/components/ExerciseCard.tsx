@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View, Text, TouchableOpacity, TextInput,
-  StyleSheet, Vibration,
+  StyleSheet, Vibration, Platform,
 } from 'react-native';
 import { Exercise } from '../types';
 import { theme } from '../constants/theme';
@@ -20,21 +20,12 @@ interface ExerciseCardProps {
 }
 
 export default function ExerciseCard({
-  exercise,
-  editable,
-  vibrationOnCheck,
-  onToggleSeries,
-  onEdit,
-  onSaveAll,
-  onTimerStart,
-  autoStartTimer,
-  onDuplicate,
-  onDelete,
+  exercise, editable, vibrationOnCheck,
+  onToggleSeries, onEdit, onSaveAll,
+  onTimerStart, autoStartTimer, onDuplicate, onDelete,
 }: ExerciseCardProps) {
   const [editMode, setEditMode] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
-
-  // Estado local para edición — se inicializa cuando se abre el popup
   const [localName, setLocalName] = useState('');
   const [localSeries, setLocalSeries] = useState('');
   const [localReps, setLocalReps] = useState('');
@@ -78,6 +69,7 @@ export default function ExerciseCard({
     }
   };
 
+  // ─── Edit panel ────────────────────────────────────────────────
   if (editMode) {
     return (
       <View style={[styles.card, styles.cardEditing]}>
@@ -120,6 +112,7 @@ export default function ExerciseCard({
             onChangeText={setLocalName}
             placeholder="Nombre del ejercicio"
             placeholderTextColor={theme.textMuted}
+            returnKeyType="next"
           />
         </View>
 
@@ -132,6 +125,8 @@ export default function ExerciseCard({
               onChangeText={setLocalSeries}
               placeholder="3"
               placeholderTextColor={theme.textMuted}
+              inputMode="numeric"
+              returnKeyType="next"
             />
           </View>
           <View style={[styles.fieldGroup, { flex: 1 }]}>
@@ -142,29 +137,35 @@ export default function ExerciseCard({
               onChangeText={setLocalReps}
               placeholder="12"
               placeholderTextColor={theme.textMuted}
+              returnKeyType="next"
             />
           </View>
         </View>
 
         <View style={styles.fieldRow}>
           <View style={[styles.fieldGroup, { flex: 1 }]}>
-            <Text style={styles.fieldLabel}>Peso</Text>
+            <Text style={styles.fieldLabel}>Peso 💪</Text>
             <TextInput
-              style={styles.fieldInput}
+              style={[styles.fieldInput, styles.fieldInputAccent]}
               value={localWeight}
               onChangeText={setLocalWeight}
               placeholder="ej: 10 kg"
               placeholderTextColor={theme.textMuted}
+              inputMode="decimal"
+              returnKeyType="next"
             />
           </View>
           <View style={[styles.fieldGroup, { flex: 1 }]}>
-            <Text style={styles.fieldLabel}>Pausa (segundos)</Text>
+            <Text style={styles.fieldLabel}>Pausa (seg)</Text>
             <TextInput
               style={styles.fieldInput}
               value={localRest}
               onChangeText={setLocalRest}
               placeholder="30"
               placeholderTextColor={theme.textMuted}
+              inputMode="numeric"
+              returnKeyType="done"
+              onSubmitEditing={saveAndClose}
             />
           </View>
         </View>
@@ -172,27 +173,41 @@ export default function ExerciseCard({
     );
   }
 
+  // ─── Display card ──────────────────────────────────────────────
   return (
     <TouchableOpacity
       style={[styles.card, allDone && styles.cardDone]}
       onPress={() => editable && openEdit()}
-      activeOpacity={editable ? 0.7 : 1}
+      activeOpacity={editable ? 0.75 : 1}
     >
       <View style={styles.topRow}>
         <View style={styles.nameContainer}>
-          <Text style={[styles.name, allDone && styles.strikeText]}>{exercise.name}</Text>
+          {/* Nombre con indicador de editable */}
+          <View style={editable ? styles.editableField : undefined}>
+            <Text style={[styles.name, allDone && styles.strikeText]}>{exercise.name}</Text>
+          </View>
+
           <View style={styles.metaRow}>
-            {exercise.reps ? <Text style={styles.meta}>{exercise.reps}</Text> : null}
+            {exercise.reps ? (
+              <Text style={styles.meta}>{exercise.reps}</Text>
+            ) : null}
+
             {exercise.weight ? (
               <>
                 <Text style={styles.metaSep}>·</Text>
-                <Text style={styles.meta}>{exercise.weight}</Text>
+                {/* Peso destacado como dato clave */}
+                <View style={[styles.weightBadge, allDone && styles.weightBadgeDone]}>
+                  <Text style={[styles.weightText, allDone && styles.weightTextDone]}>
+                    {exercise.weight}
+                  </Text>
+                </View>
               </>
             ) : null}
+
             {exercise.restSeconds > 0 && (
               <>
                 <Text style={styles.metaSep}>·</Text>
-                <Text style={styles.meta}>{exercise.restSeconds}s pausa</Text>
+                <Text style={styles.meta}>{exercise.restSeconds}s</Text>
               </>
             )}
           </View>
@@ -211,6 +226,11 @@ export default function ExerciseCard({
           ))}
         </View>
       </View>
+
+      {/* Indicador de editable */}
+      {editable && !allDone && (
+        <Text style={styles.editHint}>Toca para editar</Text>
+      )}
     </TouchableOpacity>
   );
 }
@@ -218,36 +238,54 @@ export default function ExerciseCard({
 const styles = StyleSheet.create({
   card: {
     backgroundColor: theme.cardBackground,
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 8,
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 10,
     borderWidth: 1,
     borderColor: theme.borderColor,
   },
-  cardDone: { opacity: 0.4 },
-  cardEditing: { borderColor: theme.timerColor },
+  cardDone: { opacity: 0.35 },
+  cardEditing: { borderColor: theme.timerColor, borderWidth: 1.5 },
   topRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
+    flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'space-between', gap: 12,
   },
   nameContainer: { flex: 1 },
+  editableField: {
+    borderBottomWidth: 1,
+    borderBottomColor: theme.borderColor,
+    borderStyle: 'dashed',
+    paddingBottom: 2,
+    marginBottom: 2,
+  },
   name: {
     color: theme.textColor,
     fontSize: theme.fontSize.exercise,
-    fontWeight: '500',
+    fontWeight: '600',
     lineHeight: 24,
   },
   strikeText: { textDecorationLine: 'line-through', color: theme.strikeColor },
   metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 4,
-    flexWrap: 'wrap',
+    flexDirection: 'row', alignItems: 'center',
+    marginTop: 6, flexWrap: 'wrap', gap: 2,
   },
   meta: { color: theme.textMuted, fontSize: theme.fontSize.small },
   metaSep: { color: theme.borderColor, fontSize: theme.fontSize.small, marginHorizontal: 4 },
+  weightBadge: {
+    backgroundColor: theme.borderColor,
+    borderRadius: 6,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+  },
+  weightBadgeDone: { backgroundColor: 'transparent' },
+  weightText: { color: theme.timerColor, fontSize: 12, fontWeight: '700' },
+  weightTextDone: { color: theme.strikeColor },
+  editHint: {
+    color: theme.checkboxInactive,
+    fontSize: 10,
+    marginTop: 6,
+    letterSpacing: 0.5,
+  },
   seriesRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
   checkbox: {
     width: 36, height: 36, borderRadius: 8,
@@ -257,6 +295,7 @@ const styles = StyleSheet.create({
   checkboxDone: { backgroundColor: theme.checkboxActive, borderColor: theme.checkboxActive },
   checkMark: { color: '#000', fontSize: 16, fontWeight: '800' },
 
+  // Edit panel
   editHeader: {
     flexDirection: 'row', justifyContent: 'space-between',
     alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 8,
@@ -264,8 +303,8 @@ const styles = StyleSheet.create({
   editHeaderActions: { flexDirection: 'row', gap: 8, alignItems: 'center', flexWrap: 'wrap' },
   editTitle: { color: theme.textMuted, fontSize: 11, letterSpacing: 2, fontWeight: '700' },
   doneBtn: {
-    backgroundColor: theme.timerColor,
-    borderRadius: 8, paddingHorizontal: 14, paddingVertical: 6,
+    backgroundColor: theme.timerColor, borderRadius: 8,
+    paddingHorizontal: 14, paddingVertical: 6,
   },
   doneBtnText: { color: '#000', fontSize: 12, fontWeight: '800', letterSpacing: 1 },
   dupBtn: {
@@ -297,9 +336,12 @@ const styles = StyleSheet.create({
     letterSpacing: 1, marginBottom: 6, fontWeight: '600',
   },
   fieldInput: {
-    backgroundColor: theme.sectionBackground,
-    borderRadius: 8, padding: 10,
+    backgroundColor: theme.sectionBackground, borderRadius: 8, padding: 12,
     color: theme.textColor, fontSize: 15,
     borderWidth: 1, borderColor: theme.borderColor,
+  },
+  fieldInputAccent: {
+    borderColor: theme.timerColor,
+    borderWidth: 1.5,
   },
 });
