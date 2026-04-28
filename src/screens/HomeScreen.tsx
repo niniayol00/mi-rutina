@@ -39,7 +39,19 @@ export default function HomeScreen() {
     setLoading(true);
     const [r, s, dates] = await Promise.all([loadRoutine(), loadSettings(), loadTrainingDates()]);
     const { routine: checked, settings: checkedSettings } = await checkAndResetIfNewDay(r, s);
-    setRoutine(checked);
+
+    // Si al cargar todos los ejercicios están completos, limpiar el estado directamente
+    const allDoneOnLoad = checked.sections.every((sec) =>
+      sec.exercises.every((ex) => ex.seriesCompleted.every(Boolean))
+    );
+    if (allDoneOnLoad && checked.sections.some((s) => s.exercises.length > 0)) {
+      const clean = resetAllSeries(checked);
+      await saveRoutine(clean);
+      setRoutine(clean);
+    } else {
+      setRoutine(checked);
+    }
+
     setSettings(checkedSettings);
     setTrainingDates(dates);
     completedShown.current = false;
@@ -250,6 +262,19 @@ export default function HomeScreen() {
     persistRoutine(updated);
   };
 
+  const finalizarRutina = async () => {
+    if (!routine) return;
+    if (saveTimeout.current) {
+      clearTimeout(saveTimeout.current);
+      saveTimeout.current = null;
+    }
+    const resetRoutine = resetAllSeries(routine);
+    await saveRoutine(resetRoutine);
+    setRoutine(resetRoutine);
+    completedShown.current = false;
+    setCalendarVisible(true);
+  };
+
   const startTimer = (seconds: number, workSeconds?: number) => {
     setTimerSeconds(seconds);
     setTimerWorkSeconds(workSeconds);
@@ -340,9 +365,9 @@ export default function HomeScreen() {
         ))}
 
         {done === total && total > 0 && (
-          <TouchableOpacity style={styles.completeBanner} onPress={() => setCalendarVisible(true)}>
+          <TouchableOpacity style={styles.completeBanner} onPress={finalizarRutina}>
             <Text style={styles.completeText}>RUTINA COMPLETADA</Text>
-            <Text style={styles.completeSub}>Ver calendario</Text>
+            <Text style={styles.completeSub}>Tocar para guardar y limpiar</Text>
           </TouchableOpacity>
         )}
 
