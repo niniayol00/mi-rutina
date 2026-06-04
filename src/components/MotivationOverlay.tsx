@@ -5,6 +5,7 @@ import { theme } from '../constants/theme';
 interface MotivationOverlayProps {
   visible: boolean;
   routineName: string;
+  duration?: string;
 }
 
 const MESSAGES = [
@@ -14,7 +15,7 @@ const MESSAGES = [
   '¡Sos imparable! 🚀',
 ];
 
-export default function MotivationOverlay({ visible, routineName }: MotivationOverlayProps) {
+export default function MotivationOverlay({ visible, routineName, duration }: MotivationOverlayProps) {
   const opacity = useRef(new Animated.Value(0)).current;
   const scale = useRef(new Animated.Value(0.8)).current;
   const [message, setMessage] = useState(MESSAGES[0]);
@@ -41,6 +42,7 @@ export default function MotivationOverlay({ visible, routineName }: MotivationOv
       <Animated.View style={[styles.card, { transform: [{ scale }] }]}>
         <Text style={styles.message}>{message}</Text>
         <Text style={styles.routineName}>{routineName}</Text>
+        {duration ? <Text style={styles.duration}>{duration}</Text> : null}
         <Text style={styles.sub}>Guardando en tu historial...</Text>
       </Animated.View>
     </Animated.View>
@@ -76,6 +78,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     textAlign: 'center',
+  },
+  duration: {
+    color: theme.timerColor,
+    fontSize: 15,
+    fontWeight: '700',
+    marginTop: 4,
   },
   sub: {
     color: theme.textMuted,

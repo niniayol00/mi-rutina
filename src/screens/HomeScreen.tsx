@@ -38,9 +38,13 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [editingTitle, setEditingTitle] = useState(false);
   const [sessionStart] = useState<Date>(new Date());
+  const [arrivalTime, setArrivalTime] = useState<string | null>(null);
+  const [departureTime, setDepartureTime] = useState<string | null>(null);
+  const [workoutDuration, setWorkoutDuration] = useState<string>('');
 
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const completedShown = useRef(false);
+  const firstCheckDone = useRef(false);
   const listOpacity = useRef(new Animated.Value(1)).current;
 
   const routine = allRoutines[activeId] ?? null;
@@ -83,6 +87,10 @@ export default function HomeScreen() {
     setSettings(finalSettings);
     setTrainingDates(dates);
     completedShown.current = false;
+    firstCheckDone.current = false;
+    setArrivalTime(null);
+    setDepartureTime(null);
+    setWorkoutDuration('');
     setLoading(false);
   }, []);
 
@@ -144,6 +152,18 @@ export default function HomeScreen() {
     });
     const updatedDates = await saveTrainingDate(today);
     setTrainingDates(updatedDates);
+
+    // Registrar hora de salida y calcular duración
+    const depH = String(endTime.getHours()).padStart(2, '0');
+    const depM = String(endTime.getMinutes()).padStart(2, '0');
+    setDepartureTime(`${depH}:${depM}`);
+    const totalMin = Math.round((endTime.getTime() - sessionStart.getTime()) / 60000);
+    const hours = Math.floor(totalMin / 60);
+    const mins = totalMin % 60;
+    const durStr = hours > 0
+      ? `${hours} hora${hours > 1 ? 's' : ''} ${mins > 0 ? `${mins} minuto${mins > 1 ? 's' : ''}` : ''}`
+      : `${mins} minuto${mins !== 1 ? 's' : ''}`;
+    setWorkoutDuration(durStr.trim());
   }, [sessionStart]);
 
   // ─── handleRoutineCompletion ─────────────────────────────────────
@@ -221,6 +241,14 @@ export default function HomeScreen() {
         };
       }),
     };
+    // Registrar hora de llegada al primer tilde
+    if (!firstCheckDone.current) {
+      const now = new Date();
+      const h = String(now.getHours()).padStart(2, '0');
+      const m = String(now.getMinutes()).padStart(2, '0');
+      setArrivalTime(`${h}:${m}`);
+      firstCheckDone.current = true;
+    }
     updateAllRoutines(updated);
     checkAllCompleted(updated);
   };
@@ -394,6 +422,11 @@ export default function HomeScreen() {
             </TouchableOpacity>
           )}
           <Text style={styles.subtitle}>{routine.frequency}</Text>
+          {arrivalTime && (
+            <Text style={styles.timeInfo}>
+              Entrada {arrivalTime}{departureTime ? `  ·  Salida ${departureTime}` : ''}
+            </Text>
+          )}
         </View>
         <TouchableOpacity style={styles.headerFab} onPress={() => setFabMenuVisible(true)}>
           <Text style={styles.headerFabText}>+</Text>
@@ -421,18 +454,18 @@ export default function HomeScreen() {
         </ScrollView>
       )}
 
-      {/* Barra de limpiar tildes */}
-      {done > 0 && done < total && (
-        <TouchableOpacity style={styles.clearBar} onPress={limpiarTildes}>
-          <Text style={styles.clearBarText}>Borrar todos los tildes</Text>
-        </TouchableOpacity>
-      )}
-
       {/* Progress bar */}
       {total > 0 && (
         <View style={styles.progressBarContainer}>
           <View style={[styles.progressBar, { width: `${(done / total) * 100}%` }]} />
         </View>
+      )}
+
+      {/* Barra de limpiar tildes */}
+      {done > 0 && done < total && (
+        <TouchableOpacity style={styles.clearBar} onPress={limpiarTildes}>
+          <Text style={styles.clearBarText}>Borrar todos los tildes</Text>
+        </TouchableOpacity>
       )}
 
       {/* Exercise list with fade animation */}
@@ -512,6 +545,7 @@ export default function HomeScreen() {
       <MotivationOverlay
         visible={motivationVisible}
         routineName={routine.name}
+        duration={workoutDuration}
       />
     </View>
   );
@@ -531,6 +565,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2, borderBottomColor: theme.timerColor, paddingVertical: 2,
   },
   subtitle: { color: theme.textMuted, fontSize: theme.fontSize.small, marginTop: 2 },
+  timeInfo: { color: theme.timerColor, fontSize: 11, marginTop: 3, fontWeight: '600' },
   clearBar: {
     backgroundColor: theme.cardBackground,
     borderTopWidth: 1, borderBottomWidth: 1,
@@ -538,6 +573,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 20,
     alignItems: 'center',
+    marginTop: 10,
   },
   clearBarText: { color: theme.timerColor, fontSize: 14, fontWeight: '700', letterSpacing: 0.5 },
   headerFab: {

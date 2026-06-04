@@ -211,18 +211,18 @@ const ExerciseCard = memo(function ExerciseCard({
 
   // ─── Display card ──────────────────────────────────────────────
   return (
-    <TouchableOpacity
-      style={[styles.card, allDone && styles.cardDone]}
-      onPress={() => editable && openEdit()}
-      activeOpacity={editable ? 0.75 : 1}
-    >
-
+    <View style={[styles.card, allDone && styles.cardDone]}>
       <View style={styles.topRow}>
         <View style={styles.nameContainer}>
-          {/* Nombre con indicador de editable */}
-          <View style={editable ? styles.editableField : undefined}>
-            <Text style={[styles.name, allDone && styles.strikeText]}>{exercise.name}</Text>
-          </View>
+          <TouchableOpacity
+            onPress={() => editable && openEdit()}
+            activeOpacity={editable ? 0.6 : 1}
+            disabled={!editable}
+          >
+            <View style={editable ? styles.editableField : undefined}>
+              <Text style={[styles.name, allDone && styles.strikeText]}>{exercise.name}</Text>
+            </View>
+          </TouchableOpacity>
 
           <View style={styles.metaRow}>
             {exercise.workSeconds ? (
@@ -264,8 +264,7 @@ const ExerciseCard = memo(function ExerciseCard({
           ))}
         </View>
       </View>
-
-    </TouchableOpacity>
+    </View>
   );
 });
 
