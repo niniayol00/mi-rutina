@@ -190,13 +190,12 @@ const ExerciseCard = memo(function ExerciseCard({
 
           <View style={styles.metaRow}>
             {exercise.reps ? (
-              <Text style={styles.meta}>{exercise.reps}</Text>
+              <Text style={styles.meta}>{exercise.reps} repeticiones</Text>
             ) : null}
 
             {exercise.weight ? (
               <>
                 <Text style={styles.metaSep}>·</Text>
-                {/* Peso destacado como dato clave */}
                 <View style={[styles.weightBadge, allDone && styles.weightBadgeDone]}>
                   <Text style={[styles.weightText, allDone && styles.weightTextDone]}>
                     {exercise.weight}
@@ -208,7 +207,7 @@ const ExerciseCard = memo(function ExerciseCard({
             {exercise.restSeconds > 0 && (
               <>
                 <Text style={styles.metaSep}>·</Text>
-                <Text style={styles.meta}>{exercise.restSeconds}s</Text>
+                <Text style={styles.meta}>{exercise.restSeconds}s pausa</Text>
               </>
             )}
           </View>
@@ -295,7 +294,7 @@ const styles = StyleSheet.create({
     borderWidth: 2, borderColor: theme.checkboxInactive,
     justifyContent: 'center', alignItems: 'center',
   },
-  checkboxDone: { backgroundColor: theme.checkboxActive, borderColor: theme.checkboxActive },
+  checkboxDone: { backgroundColor: theme.timerColor, borderColor: theme.timerColor },
   checkMark: { color: '#000', fontSize: 16, fontWeight: '800' },
 
   // Edit panel
