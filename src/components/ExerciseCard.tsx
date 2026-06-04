@@ -15,6 +15,7 @@ interface ExerciseCardProps {
   onSaveAll: (updated: Exercise) => void;
   onTimerStart: (seconds: number, workSeconds?: number) => void;
   autoStartTimer: boolean;
+  previousWeight?: string;
   onDuplicate?: () => void;
   onDelete?: () => void;
 }
@@ -22,7 +23,7 @@ interface ExerciseCardProps {
 const ExerciseCard = memo(function ExerciseCard({
   exercise, editable, vibrationOnCheck,
   onToggleSeries, onEdit, onSaveAll,
-  onTimerStart, autoStartTimer, onDuplicate, onDelete,
+  onTimerStart, autoStartTimer, previousWeight, onDuplicate, onDelete,
 }: ExerciseCardProps) {
   const [editMode, setEditMode] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -231,6 +232,9 @@ const ExerciseCard = memo(function ExerciseCard({
                     {exercise.weight}
                   </Text>
                 </View>
+                {previousWeight && previousWeight !== exercise.weight && !allDone && (
+                  <Text style={styles.prevWeight}>antes: {previousWeight}</Text>
+                )}
               </>
             ) : null}
 
@@ -331,6 +335,12 @@ const styles = StyleSheet.create({
   weightBadgeDone: { backgroundColor: 'transparent' },
   weightText: { color: theme.timerColor, fontSize: 12, fontWeight: '700' },
   weightTextDone: { color: theme.strikeColor },
+  prevWeight: {
+    color: theme.textMuted,
+    fontSize: 11,
+    marginLeft: 4,
+    fontStyle: 'italic',
+  },
   editHint: {
     color: theme.checkboxInactive,
     fontSize: 10,

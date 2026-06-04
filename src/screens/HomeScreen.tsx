@@ -10,6 +10,7 @@ import {
   loadActiveRoutine, saveActiveRoutine, loadSettings, saveSettings,
   checkAndResetIfNewDay, loadTrainingDates, saveTrainingDate,
   loadProgress, saveProgress, saveSession, resetAllSeries,
+  loadWeightHistory, updateWeightForExercise,
 } from '../utils/storage';
 import { theme } from '../constants/theme';
 import TimerModal from '../components/TimerModal';
@@ -28,6 +29,7 @@ export default function HomeScreen() {
   const [allRoutines, setAllRoutines] = useState<Record<string, Routine>>({});
   const [activeId, setActiveId] = useState<string>('');
   const [settings, setSettings] = useState<AppSettings | null>(null);
+  const [weightHistory, setWeightHistory] = useState<Record<string, string>>({});
   const [timerVisible, setTimerVisible] = useState(false);
   const [timerSeconds, setTimerSeconds] = useState(30);
   const [timerWorkSeconds, setTimerWorkSeconds] = useState<number | undefined>(undefined);
@@ -55,8 +57,8 @@ export default function HomeScreen() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [all, activeIdRaw, s, dates] = await Promise.all([
-      loadAllRoutines(), loadActiveRoutineId(), loadSettings(), loadTrainingDates(),
+    const [all, activeIdRaw, s, dates, wh] = await Promise.all([
+      loadAllRoutines(), loadActiveRoutineId(), loadSettings(), loadTrainingDates(), loadWeightHistory(),
     ]);
 
     const currentId = (all[activeIdRaw] ? activeIdRaw : Object.keys(all)[0]) ?? '';
@@ -88,6 +90,7 @@ export default function HomeScreen() {
     setActiveId(currentId);
     setSettings(finalSettings);
     setTrainingDates(dates);
+    setWeightHistory(wh);
     completedShown.current = false;
     firstCheckDone.current = false;
     setArrivalTime(null);
@@ -154,6 +157,10 @@ export default function HomeScreen() {
     });
     const updatedDates = await saveTrainingDate(today);
     setTrainingDates(updatedDates);
+
+    // Mostrar overlay motivacional brevemente
+    setMotivationVisible(true);
+    setTimeout(() => setMotivationVisible(false), 2200);
 
     // Registrar hora de salida y calcular duración
     const depH = String(endTime.getHours()).padStart(2, '0');
@@ -262,7 +269,7 @@ export default function HomeScreen() {
     updateAllRoutines(updated);
   };
 
-  const saveExercise = (sectionIdx: number, exerciseIdx: number, updated: Exercise) => {
+  const saveExercise = async (sectionIdx: number, exerciseIdx: number, updated: Exercise) => {
     if (!routine) return;
     const updatedRoutine: Routine = {
       ...routine,
@@ -275,6 +282,14 @@ export default function HomeScreen() {
       }),
     };
     updateAllRoutines(updatedRoutine);
+    // Guardar peso en historial si se cambió
+    if (updated.weight) {
+      await updateWeightForExercise(updated.name, updated.weight);
+      setWeightHistory(prev => ({
+        ...prev,
+        [updated.name.toLowerCase().trim()]: updated.weight!,
+      }));
+    }
   };
 
   const duplicateExercise = (sectionIdx: number, exerciseIdx: number) => {
@@ -473,6 +488,7 @@ export default function HomeScreen() {
               editable={settings.editableFields}
               vibrationOnCheck={settings.vibrationOnCheck}
               autoStartTimer={settings.autoStartTimerOnCheck}
+              weightHistory={weightHistory}
               onToggleSeries={(ei, si2) => toggleSeries(si, ei, si2)}
               onEdit={(ei, field, value) => editExerciseField(si, ei, field, value)}
               onSaveAll={(ei, updated) => saveExercise(si, ei, updated)}
@@ -541,6 +557,7 @@ export default function HomeScreen() {
         onAddExercise={() => setAddVisible(true)}
         onNewRoutine={() => router.push('/input')}
         onDuplicateRoutine={duplicateRoutine}
+        onHistorial={() => router.push('/historial')}
       />
 
       <MotivationOverlay

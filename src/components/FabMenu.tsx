@@ -8,9 +8,10 @@ interface FabMenuProps {
   onAddExercise: () => void;
   onNewRoutine: () => void;
   onDuplicateRoutine: () => void;
+  onHistorial: () => void;
 }
 
-export default function FabMenu({ visible, onClose, onAddExercise, onNewRoutine, onDuplicateRoutine }: FabMenuProps) {
+export default function FabMenu({ visible, onClose, onAddExercise, onNewRoutine, onDuplicateRoutine, onHistorial }: FabMenuProps) {
   const handleOption = (fn: () => void) => { onClose(); fn(); };
 
   return (
@@ -42,6 +43,16 @@ export default function FabMenu({ visible, onClose, onAddExercise, onNewRoutine,
             <View>
               <Text style={styles.optionLabel}>Duplicar rutina actual</Text>
               <Text style={styles.optionSub}>Para hacer variaciones</Text>
+            </View>
+          </TouchableOpacity>
+
+          <View style={styles.divider} />
+
+          <TouchableOpacity style={styles.option} onPress={() => handleOption(onHistorial)}>
+            <Text style={styles.optionIcon}>📊</Text>
+            <View>
+              <Text style={styles.optionLabel}>Ver historial</Text>
+              <Text style={styles.optionSub}>Sesiones y pesos por ejercicio</Text>
             </View>
           </TouchableOpacity>
 

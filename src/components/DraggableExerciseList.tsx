@@ -10,6 +10,7 @@ interface Props {
   editable: boolean;
   vibrationOnCheck: boolean;
   autoStartTimer: boolean;
+  weightHistory: Record<string, string>;
   onToggleSeries: (ei: number, si: number) => void;
   onEdit: (ei: number, field: string, value: string) => void;
   onSaveAll: (ei: number, updated: Exercise) => void;
@@ -21,7 +22,7 @@ interface Props {
 
 export default function DraggableExerciseList({
   section, sectionIdx, editable, vibrationOnCheck,
-  autoStartTimer, onToggleSeries, onEdit, onSaveAll, onTimerStart, onReorder,
+  autoStartTimer, weightHistory, onToggleSeries, onEdit, onSaveAll, onTimerStart, onReorder,
   onDuplicate, onDelete,
 }: Props) {
   const [dragIdx, setDragIdx] = useState<number | null>(null);
@@ -37,6 +38,7 @@ export default function DraggableExerciseList({
             editable={editable}
             vibrationOnCheck={vibrationOnCheck}
             autoStartTimer={autoStartTimer}
+            previousWeight={weightHistory[exercise.name.toLowerCase().trim()]}
             onToggleSeries={(si) => onToggleSeries(ei, si)}
             onEdit={(field, value) => onEdit(ei, field as string, value)}
             onSaveAll={(updated) => onSaveAll(ei, updated)}
@@ -100,6 +102,7 @@ export default function DraggableExerciseList({
                 editable={editable}
                 vibrationOnCheck={vibrationOnCheck}
                 autoStartTimer={autoStartTimer}
+                previousWeight={weightHistory[exercise.name.toLowerCase().trim()]}
                 onToggleSeries={(si) => onToggleSeries(ei, si)}
                 onEdit={(field, value) => onEdit(ei, field as string, value)}
                 onSaveAll={(updated) => onSaveAll(ei, updated)}

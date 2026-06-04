@@ -171,3 +171,24 @@ export async function loadProgress(): Promise<ProgressData> {
 export async function saveProgress(progress: ProgressData): Promise<void> {
   await AsyncStorage.setItem(PROGRESS_KEY, JSON.stringify(progress));
 }
+
+// ─── Weight History ───────────────────────────────────────────────
+
+const WEIGHT_HISTORY_KEY = 'mi_rutina_weight_history';
+
+export async function loadWeightHistory(): Promise<Record<string, string>> {
+  try {
+    const raw = await AsyncStorage.getItem(WEIGHT_HISTORY_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch { return {}; }
+}
+
+export async function saveWeightHistory(history: Record<string, string>): Promise<void> {
+  await AsyncStorage.setItem(WEIGHT_HISTORY_KEY, JSON.stringify(history));
+}
+
+export async function updateWeightForExercise(exerciseName: string, weight: string): Promise<void> {
+  const history = await loadWeightHistory();
+  history[exerciseName.toLowerCase().trim()] = weight;
+  await saveWeightHistory(history);
+}
