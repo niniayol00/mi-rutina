@@ -392,8 +392,8 @@ export default function HomeScreen() {
           )}
           <Text style={styles.subtitle}>{routine.frequency}</Text>
         </View>
-        <TouchableOpacity style={styles.newRoutineBtn} onPress={() => router.push('/input')}>
-          <Text style={styles.newRoutineText}>Nueva rutina</Text>
+        <TouchableOpacity style={styles.headerFab} onPress={() => setFabMenuVisible(true)}>
+          <Text style={styles.headerFabText}>+</Text>
         </TouchableOpacity>
         <View style={styles.progressBadge}>
           <Text style={styles.progressText}>{done}/{total}</Text>
@@ -474,9 +474,6 @@ export default function HomeScreen() {
         <View style={{ height: 100 }} />
       </Animated.ScrollView>
 
-      <TouchableOpacity style={styles.fab} onPress={() => setFabMenuVisible(true)}>
-        <Text style={styles.fabText}>+</Text>
-      </TouchableOpacity>
 
       <TimerModal
         visible={timerVisible}
@@ -540,11 +537,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   clearBarText: { color: theme.danger, fontSize: 14, fontWeight: '700', letterSpacing: 0.5 },
-  newRoutineBtn: {
-    borderWidth: 1, borderColor: theme.borderColor, borderRadius: 10,
-    paddingHorizontal: 10, paddingVertical: 6, marginRight: 10,
+  headerFab: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: theme.timerColor,
+    justifyContent: 'center', alignItems: 'center',
+    marginRight: 10,
+    shadowColor: theme.timerColor, shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5, shadowRadius: 8, elevation: 6,
   },
-  newRoutineText: { color: theme.textMuted, fontSize: 12, fontWeight: '600' },
+  headerFabText: { color: '#000', fontSize: 24, fontWeight: '700', lineHeight: 28 },
   progressBadge: {
     alignItems: 'center', backgroundColor: theme.cardBackground,
     borderRadius: 12, paddingHorizontal: 16, paddingVertical: 8,

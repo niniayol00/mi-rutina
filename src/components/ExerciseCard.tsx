@@ -248,10 +248,6 @@ const ExerciseCard = memo(function ExerciseCard({
         </View>
       </View>
 
-      {/* Indicador de editable */}
-      {editable && !allDone && (
-        <Text style={styles.editHint}>Toca para editar</Text>
-      )}
     </TouchableOpacity>
   );
 });
