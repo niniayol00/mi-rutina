@@ -459,12 +459,6 @@ export default function HomeScreen() {
           </View>
         ))}
 
-        {done > 0 && done < total && (
-          <TouchableOpacity style={styles.limpiarBtn} onPress={limpiarTildes}>
-            <Text style={styles.limpiarBtnText}>🗑️  Limpiar rutina</Text>
-          </TouchableOpacity>
-        )}
-
         {done === total && total > 0 && (
           <View style={styles.completeBanner}>
             <Text style={styles.completeText}>RUTINA COMPLETADA 🎉</Text>
@@ -473,9 +467,6 @@ export default function HomeScreen() {
               onPress={() => handleRoutineCompletion('view_calendar')}
             >
               <Text style={styles.verCalendarioBtnText}>VER CALENDARIO</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.limpiarBtn} onPress={limpiarTildes}>
-              <Text style={styles.limpiarBtnText}>🗑️  Limpiar rutina</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -583,10 +574,10 @@ const styles = StyleSheet.create({
     fontWeight: '600', letterSpacing: 2, marginBottom: 10, marginLeft: 2,
   },
   limpiarBtn: {
-    borderWidth: 1, borderColor: theme.danger, borderRadius: 12,
+    borderWidth: 1, borderColor: theme.timerColor, borderRadius: 12,
     paddingVertical: 12, paddingHorizontal: 32, marginVertical: 8,
   },
-  limpiarBtnText: { color: theme.danger, fontSize: 14, fontWeight: '700' },
+  limpiarBtnText: { color: theme.timerColor, fontSize: 14, fontWeight: '700' },
   completeBanner: { alignItems: 'center', paddingVertical: 24, gap: 14 },
   completeText: { color: theme.timerColor, fontSize: 18, fontWeight: '700', letterSpacing: 2 },
   verCalendarioBtn: {
