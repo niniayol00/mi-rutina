@@ -329,6 +329,17 @@ export default function HomeScreen() {
     await saveActiveRoutineId(id);
   };
 
+  const limpiarTildes = async () => {
+    if (!routine) return;
+    const clean = resetAllSeries(routine);
+    const newAll = { ...allRoutines, [clean.id]: clean };
+    await saveAllRoutines(newAll);
+    Animated.timing(listOpacity, { toValue: 0, duration: 200, useNativeDriver: true }).start(() => {
+      setAllRoutines(newAll);
+      Animated.timing(listOpacity, { toValue: 1, duration: 300, useNativeDriver: true }).start();
+    });
+  };
+
   const startTimer = (seconds: number, workSeconds?: number) => {
     setTimerSeconds(seconds);
     setTimerWorkSeconds(workSeconds);
@@ -381,6 +392,11 @@ export default function HomeScreen() {
           )}
           <Text style={styles.subtitle}>{routine.frequency}</Text>
         </View>
+        {done > 0 && (
+          <TouchableOpacity style={styles.clearBtn} onPress={limpiarTildes}>
+            <Text style={styles.clearBtnText}>🗑️ Limpiar</Text>
+          </TouchableOpacity>
+        )}
         <TouchableOpacity style={styles.newRoutineBtn} onPress={() => router.push('/input')}>
           <Text style={styles.newRoutineText}>Nueva rutina</Text>
         </TouchableOpacity>
@@ -513,6 +529,11 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2, borderBottomColor: theme.timerColor, paddingVertical: 2,
   },
   subtitle: { color: theme.textMuted, fontSize: theme.fontSize.small, marginTop: 2 },
+  clearBtn: {
+    borderWidth: 1, borderColor: theme.danger, borderRadius: 10,
+    paddingHorizontal: 10, paddingVertical: 6, marginRight: 8,
+  },
+  clearBtnText: { color: theme.danger, fontSize: 12, fontWeight: '600' },
   newRoutineBtn: {
     borderWidth: 1, borderColor: theme.borderColor, borderRadius: 10,
     paddingHorizontal: 10, paddingVertical: 6, marginRight: 10,

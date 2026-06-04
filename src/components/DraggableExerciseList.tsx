@@ -39,6 +39,7 @@ export default function DraggableExerciseList({
             autoStartTimer={autoStartTimer}
             onToggleSeries={(si) => onToggleSeries(ei, si)}
             onEdit={(field, value) => onEdit(ei, field as string, value)}
+            onSaveAll={(updated) => onSaveAll(ei, updated)}
             onTimerStart={onTimerStart}
           />
         ))}
