@@ -421,7 +421,7 @@ export default function HomeScreen() {
       {/* Barra de limpiar tildes */}
       {done > 0 && done < total && (
         <TouchableOpacity style={styles.clearBar} onPress={limpiarTildes}>
-          <Text style={styles.clearBarText}>🗑️  Borrar todos los tildes</Text>
+          <Text style={styles.clearBarText}>Borrar todos los tildes</Text>
         </TouchableOpacity>
       )}
 
@@ -531,12 +531,12 @@ const styles = StyleSheet.create({
   clearBar: {
     backgroundColor: theme.cardBackground,
     borderTopWidth: 1, borderBottomWidth: 1,
-    borderColor: theme.danger,
+    borderColor: theme.timerColor,
     paddingVertical: 12,
     paddingHorizontal: 20,
     alignItems: 'center',
   },
-  clearBarText: { color: theme.danger, fontSize: 14, fontWeight: '700', letterSpacing: 0.5 },
+  clearBarText: { color: theme.timerColor, fontSize: 14, fontWeight: '700', letterSpacing: 0.5 },
   headerFab: {
     width: 36, height: 36, borderRadius: 18,
     backgroundColor: theme.timerColor,
