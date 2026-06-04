@@ -117,14 +117,9 @@ export default function AddExerciseModal({ visible, sections, onAdd, onClose }: 
                   >
                     <Text style={styles.stepBtnText}>−</Text>
                   </TouchableOpacity>
-                  <TextInput
-                    style={styles.stepInput}
-                    value={series}
-                    onChangeText={(v) => { setSeries(v); setErrors((p) => ({ ...p, series: '' })); }}
-                    inputMode="numeric"
-                    textAlign="center"
-                    placeholderTextColor={theme.textMuted}
-                  />
+                  <View style={styles.stepValueWrap}>
+                    <Text style={styles.stepValue}>{series}</Text>
+                  </View>
                   <TouchableOpacity
                     style={styles.stepBtn}
                     onPress={() => setSeries(v => String(Math.min(20, (parseInt(v) || 0) + 1)))}
@@ -139,19 +134,13 @@ export default function AddExerciseModal({ visible, sections, onAdd, onClose }: 
                 <View style={styles.stepper}>
                   <TouchableOpacity
                     style={styles.stepBtn}
-                    onPress={() => setReps(v => String(Math.max(0, (parseInt(v) || 0) - 1)))}
+                    onPress={() => setReps(v => String(Math.max(1, (parseInt(v) || 1) - 1)))}
                   >
                     <Text style={styles.stepBtnText}>−</Text>
                   </TouchableOpacity>
-                  <TextInput
-                    style={styles.stepInput}
-                    value={reps}
-                    onChangeText={(v) => { setReps(v); setErrors((p) => ({ ...p, reps: '' })); }}
-                    inputMode="numeric"
-                    textAlign="center"
-                    placeholder="0"
-                    placeholderTextColor={theme.textMuted}
-                  />
+                  <View style={styles.stepValueWrap}>
+                    <Text style={styles.stepValue}>{reps}</Text>
+                  </View>
                   <TouchableOpacity
                     style={styles.stepBtn}
                     onPress={() => setReps(v => String(Math.min(100, (parseInt(v) || 0) + 1)))}
@@ -319,23 +308,29 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: theme.borderColor,
+    overflow: 'hidden',
+    height: 48,
   },
   stepBtn: {
-    width: 40,
+    flex: 1,
     height: 48,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: theme.borderColor,
-    borderRadius: 7,
   },
   stepBtnText: {
     color: theme.textColor,
     fontSize: 22,
     fontWeight: '600',
   },
-  stepInput: {
-    flex: 1,
+  stepValueWrap: {
+    flex: 2,
     height: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: theme.sectionBackground,
+  },
+  stepValue: {
     color: theme.textColor,
     fontSize: 18,
     fontWeight: '700',

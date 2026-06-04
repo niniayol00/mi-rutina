@@ -129,14 +129,9 @@ const ExerciseCard = memo(function ExerciseCard({
               >
                 <Text style={styles.stepBtnText}>−</Text>
               </TouchableOpacity>
-              <TextInput
-                style={styles.stepInput}
-                value={localSeries}
-                onChangeText={setLocalSeries}
-                inputMode="numeric"
-                textAlign="center"
-                placeholderTextColor={theme.textMuted}
-              />
+              <View style={styles.stepValueWrap}>
+                <Text style={styles.stepValue}>{localSeries}</Text>
+              </View>
               <TouchableOpacity
                 style={styles.stepBtn}
                 onPress={() => setLocalSeries(v => String(Math.min(20, (parseInt(v) || 1) + 1)))}
@@ -150,28 +145,16 @@ const ExerciseCard = memo(function ExerciseCard({
             <View style={styles.stepper}>
               <TouchableOpacity
                 style={styles.stepBtn}
-                onPress={() => {
-                  const n = parseInt(localReps);
-                  if (!isNaN(n)) setLocalReps(String(Math.max(1, n - 1)));
-                }}
+                onPress={() => setLocalReps(v => String(Math.max(1, (parseInt(v) || 1) - 1)))}
               >
                 <Text style={styles.stepBtnText}>−</Text>
               </TouchableOpacity>
-              <TextInput
-                style={styles.stepInput}
-                value={localReps}
-                onChangeText={setLocalReps}
-                inputMode="numeric"
-                textAlign="center"
-                placeholderTextColor={theme.textMuted}
-                placeholder="12"
-              />
+              <View style={styles.stepValueWrap}>
+                <Text style={styles.stepValue}>{localReps}</Text>
+              </View>
               <TouchableOpacity
                 style={styles.stepBtn}
-                onPress={() => {
-                  const n = parseInt(localReps) || 0;
-                  setLocalReps(String(Math.min(100, n + 1)));
-                }}
+                onPress={() => setLocalReps(v => String(Math.min(100, (parseInt(v) || 0) + 1)))}
               >
                 <Text style={styles.stepBtnText}>+</Text>
               </TouchableOpacity>
@@ -389,20 +372,33 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: theme.borderColor,
+    overflow: 'hidden',
+    height: 44,
   },
   stepBtn: {
-    width: 36,
+    flex: 1,
     height: 44,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: theme.borderColor,
-    borderRadius: 7,
   },
   stepBtnText: {
     color: theme.textColor,
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '600',
-    lineHeight: 24,
+  },
+  stepValueWrap: {
+    flex: 2,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: theme.sectionBackground,
+  },
+  stepValue: {
+    color: theme.textColor,
+    fontSize: 18,
+    fontWeight: '700',
+    textAlign: 'center',
   },
   stepInput: {
     flex: 1,
