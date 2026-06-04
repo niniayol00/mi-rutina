@@ -18,6 +18,7 @@ import AddExerciseModal from '../components/AddExerciseModal';
 import DraggableExerciseList from '../components/DraggableExerciseList';
 import FabMenu from '../components/FabMenu';
 import MotivationOverlay from '../components/MotivationOverlay';
+import WelcomeScreen from '../components/WelcomeScreen';
 
 function generateId() {
   return Math.random().toString(36).substring(2, 9);
@@ -34,6 +35,7 @@ export default function HomeScreen() {
   const [addVisible, setAddVisible] = useState(false);
   const [fabMenuVisible, setFabMenuVisible] = useState(false);
   const [motivationVisible, setMotivationVisible] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(true);
   const [trainingDates, setTrainingDates] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingTitle, setEditingTitle] = useState(false);
@@ -241,14 +243,6 @@ export default function HomeScreen() {
         };
       }),
     };
-    // Registrar hora de llegada al primer tilde
-    if (!firstCheckDone.current) {
-      const now = new Date();
-      const h = String(now.getHours()).padStart(2, '0');
-      const m = String(now.getMinutes()).padStart(2, '0');
-      setArrivalTime(`${h}:${m}`);
-      firstCheckDone.current = true;
-    }
     updateAllRoutines(updated);
     checkAllCompleted(updated);
   };
@@ -369,6 +363,14 @@ export default function HomeScreen() {
       setAllRoutines(newAll);
       Animated.timing(listOpacity, { toValue: 1, duration: 300, useNativeDriver: true }).start();
     });
+  };
+
+  const handleStart = () => {
+    const now = new Date();
+    const h = String(now.getHours()).padStart(2, '0');
+    const m = String(now.getMinutes()).padStart(2, '0');
+    setArrivalTime(`${h}:${m}`);
+    setShowWelcome(false);
   };
 
   const startTimer = (seconds: number, workSeconds?: number) => {
@@ -547,6 +549,13 @@ export default function HomeScreen() {
         routineName={routine.name}
         duration={workoutDuration}
       />
+
+      {showWelcome && !loading && (
+        <WelcomeScreen
+          routineName={routine.name}
+          onStart={handleStart}
+        />
+      )}
     </View>
   );
 }
