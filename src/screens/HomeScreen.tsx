@@ -457,13 +457,6 @@ export default function HomeScreen() {
         </View>
       )}
 
-      {/* Barra de limpiar tildes */}
-      {done > 0 && done < total && (
-        <TouchableOpacity style={styles.clearBar} onPress={limpiarTildes}>
-          <Text style={styles.clearBarText}>Borrar todos los tildes</Text>
-        </TouchableOpacity>
-      )}
-
       {/* Exercise list with fade animation */}
       <Animated.ScrollView
         style={[styles.scroll, { opacity: listOpacity }]}
@@ -507,6 +500,12 @@ export default function HomeScreen() {
               <Text style={styles.verCalendarioBtnText}>VER CALENDARIO</Text>
             </TouchableOpacity>
           </View>
+        )}
+
+        {done > 0 && done < total && (
+          <TouchableOpacity style={styles.clearBar} onPress={limpiarTildes}>
+            <Text style={styles.clearBarText}>Borrar todos los tildes</Text>
+          </TouchableOpacity>
         )}
 
         <View style={{ height: 100 }} />
@@ -577,12 +576,14 @@ const styles = StyleSheet.create({
   timeInfo: { color: theme.timerColor, fontSize: 11, marginTop: 3, fontWeight: '600' },
   clearBar: {
     backgroundColor: theme.cardBackground,
-    borderTopWidth: 1, borderBottomWidth: 1,
+    borderWidth: 1,
     borderColor: theme.timerColor,
-    paddingVertical: 12,
+    borderRadius: 12,
+    paddingVertical: 14,
     paddingHorizontal: 20,
     alignItems: 'center',
-    marginTop: 10,
+    marginHorizontal: 16,
+    marginTop: 8,
   },
   clearBarText: { color: theme.timerColor, fontSize: 14, fontWeight: '700', letterSpacing: 0.5 },
   headerFab: {
