@@ -192,15 +192,6 @@ export default function TimerModal({
             {done ? '0' : formatTime(remaining)}
           </Animated.Text>
 
-          {!isWork && !done && (
-            <View style={styles.quickRow}>
-              {quickButtons.map((s) => (
-                <TouchableOpacity key={s} style={styles.quickBtn} onPress={() => addTime(s)}>
-                  <Text style={styles.quickBtnText}>+{s}s</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
 
           <TouchableOpacity style={styles.skipBtn} onPress={onClose}>
             <Text style={styles.skipText}>SALTAR</Text>
