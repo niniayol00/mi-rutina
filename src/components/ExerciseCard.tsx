@@ -37,8 +37,8 @@ const ExerciseCard = memo(function ExerciseCard({
 
   const openEdit = () => {
     setLocalName(exercise.name);
-    setLocalSeries(String(exercise.series));
-    setLocalReps(exercise.reps);
+    setLocalSeries(String(Math.max(1, exercise.series || 1)));
+    setLocalReps(String(Math.max(1, parseInt(exercise.reps) || 1)));
     setLocalWeight(exercise.weight ?? '');
     setLocalRest(String(exercise.restSeconds));
     setLocalRetention(exercise.workSeconds ? String(exercise.workSeconds) : '');
@@ -386,18 +386,17 @@ const styles = StyleSheet.create({
   stepper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.sectionBackground,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: theme.borderColor,
-    overflow: 'hidden',
   },
   stepBtn: {
-    width: 40,
+    width: 36,
     height: 44,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: theme.borderColor,
+    borderRadius: 7,
   },
   stepBtnText: {
     color: theme.textColor,

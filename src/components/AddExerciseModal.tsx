@@ -20,7 +20,7 @@ function generateId() {
 export default function AddExerciseModal({ visible, sections, onAdd, onClose }: AddExerciseModalProps) {
   const [name, setName] = useState('');
   const [series, setSeries] = useState('1');
-  const [reps, setReps] = useState('0');
+  const [reps, setReps] = useState('1');
   const [weight, setWeight] = useState('');
   const [restSeconds, setRestSeconds] = useState('30');
   const [workSeconds, setWorkSeconds] = useState('');
@@ -43,7 +43,7 @@ export default function AddExerciseModal({ visible, sections, onAdd, onClose }: 
   };
 
   const reset = () => {
-    setName(''); setSeries('1'); setReps('0');
+    setName(''); setSeries('1'); setReps('1');
     setWeight(''); setRestSeconds('30'); setWorkSeconds('');
     setSectionIdx(0); setErrors({});
   };
@@ -316,18 +316,17 @@ const styles = StyleSheet.create({
   stepper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.sectionBackground,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: theme.borderColor,
-    overflow: 'hidden',
   },
   stepBtn: {
-    width: 44,
+    width: 40,
     height: 48,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: theme.borderColor,
+    borderRadius: 7,
   },
   stepBtnText: {
     color: theme.textColor,
