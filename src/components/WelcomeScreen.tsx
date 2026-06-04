@@ -30,7 +30,7 @@ export default function WelcomeScreen({ routineName, onStart }: WelcomeScreenPro
         <Text style={styles.routineName}>{routineName}</Text>
 
         <TouchableOpacity style={styles.btn} onPress={handleStart} activeOpacity={0.8}>
-          <Text style={styles.btnText}>Empecemos 💪</Text>
+          <Text style={styles.btnText}>Empecemos</Text>
         </TouchableOpacity>
       </Animated.View>
     </View>
