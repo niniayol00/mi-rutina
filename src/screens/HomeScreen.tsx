@@ -392,11 +392,6 @@ export default function HomeScreen() {
           )}
           <Text style={styles.subtitle}>{routine.frequency}</Text>
         </View>
-        {done > 0 && (
-          <TouchableOpacity style={styles.clearBtn} onPress={limpiarTildes}>
-            <Text style={styles.clearBtnText}>🗑️ Limpiar</Text>
-          </TouchableOpacity>
-        )}
         <TouchableOpacity style={styles.newRoutineBtn} onPress={() => router.push('/input')}>
           <Text style={styles.newRoutineText}>Nueva rutina</Text>
         </TouchableOpacity>
@@ -421,6 +416,13 @@ export default function HomeScreen() {
             </TouchableOpacity>
           ))}
         </ScrollView>
+      )}
+
+      {/* Barra de limpiar tildes */}
+      {done > 0 && done < total && (
+        <TouchableOpacity style={styles.clearBar} onPress={limpiarTildes}>
+          <Text style={styles.clearBarText}>🗑️  Borrar todos los tildes</Text>
+        </TouchableOpacity>
       )}
 
       {/* Progress bar */}
@@ -457,6 +459,12 @@ export default function HomeScreen() {
           </View>
         ))}
 
+        {done > 0 && done < total && (
+          <TouchableOpacity style={styles.limpiarBtn} onPress={limpiarTildes}>
+            <Text style={styles.limpiarBtnText}>🗑️  Limpiar rutina</Text>
+          </TouchableOpacity>
+        )}
+
         {done === total && total > 0 && (
           <View style={styles.completeBanner}>
             <Text style={styles.completeText}>RUTINA COMPLETADA 🎉</Text>
@@ -465,6 +473,9 @@ export default function HomeScreen() {
               onPress={() => handleRoutineCompletion('view_calendar')}
             >
               <Text style={styles.verCalendarioBtnText}>VER CALENDARIO</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.limpiarBtn} onPress={limpiarTildes}>
+              <Text style={styles.limpiarBtnText}>🗑️  Limpiar rutina</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -529,11 +540,15 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2, borderBottomColor: theme.timerColor, paddingVertical: 2,
   },
   subtitle: { color: theme.textMuted, fontSize: theme.fontSize.small, marginTop: 2 },
-  clearBtn: {
-    borderWidth: 1, borderColor: theme.danger, borderRadius: 10,
-    paddingHorizontal: 10, paddingVertical: 6, marginRight: 8,
+  clearBar: {
+    backgroundColor: theme.cardBackground,
+    borderTopWidth: 1, borderBottomWidth: 1,
+    borderColor: theme.danger,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    alignItems: 'center',
   },
-  clearBtnText: { color: theme.danger, fontSize: 12, fontWeight: '600' },
+  clearBarText: { color: theme.danger, fontSize: 14, fontWeight: '700', letterSpacing: 0.5 },
   newRoutineBtn: {
     borderWidth: 1, borderColor: theme.borderColor, borderRadius: 10,
     paddingHorizontal: 10, paddingVertical: 6, marginRight: 10,
@@ -567,6 +582,11 @@ const styles = StyleSheet.create({
     color: theme.textMuted, fontSize: theme.fontSize.section,
     fontWeight: '600', letterSpacing: 2, marginBottom: 10, marginLeft: 2,
   },
+  limpiarBtn: {
+    borderWidth: 1, borderColor: theme.danger, borderRadius: 12,
+    paddingVertical: 12, paddingHorizontal: 32, marginVertical: 8,
+  },
+  limpiarBtnText: { color: theme.danger, fontSize: 14, fontWeight: '700' },
   completeBanner: { alignItems: 'center', paddingVertical: 24, gap: 14 },
   completeText: { color: theme.timerColor, fontSize: 18, fontWeight: '700', letterSpacing: 2 },
   verCalendarioBtn: {
