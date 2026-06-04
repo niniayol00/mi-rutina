@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { memo, useState } from 'react';
 import {
   View, Text, TouchableOpacity, TextInput,
   StyleSheet, Vibration, Platform,
@@ -19,7 +19,7 @@ interface ExerciseCardProps {
   onDelete?: () => void;
 }
 
-export default function ExerciseCard({
+const ExerciseCard = memo(function ExerciseCard({
   exercise, editable, vibrationOnCheck,
   onToggleSeries, onEdit, onSaveAll,
   onTimerStart, autoStartTimer, onDuplicate, onDelete,
@@ -180,6 +180,7 @@ export default function ExerciseCard({
       onPress={() => editable && openEdit()}
       activeOpacity={editable ? 0.75 : 1}
     >
+
       <View style={styles.topRow}>
         <View style={styles.nameContainer}>
           {/* Nombre con indicador de editable */}
@@ -233,7 +234,9 @@ export default function ExerciseCard({
       )}
     </TouchableOpacity>
   );
-}
+});
+
+export default ExerciseCard;
 
 const styles = StyleSheet.create({
   card: {

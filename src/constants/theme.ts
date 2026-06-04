@@ -12,6 +12,7 @@ export const theme = {
   strikeColor: '#444444',
   borderColor: '#2A2A2A',
   success: '#00E676',
+  workColor: '#FF6B35',
   warning: '#FFC107',
   danger: '#FF5252',
   fontSize: {

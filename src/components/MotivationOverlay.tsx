@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
 import { theme } from '../constants/theme';
 
@@ -17,7 +17,11 @@ const MESSAGES = [
 export default function MotivationOverlay({ visible, routineName }: MotivationOverlayProps) {
   const opacity = useRef(new Animated.Value(0)).current;
   const scale = useRef(new Animated.Value(0.8)).current;
-  const message = MESSAGES[Math.floor(Math.random() * MESSAGES.length)];
+  const [message, setMessage] = useState(MESSAGES[0]);
+
+  useEffect(() => {
+    if (visible) setMessage(MESSAGES[Math.floor(Math.random() * MESSAGES.length)]);
+  }, [visible]);
 
   useEffect(() => {
     if (visible) {

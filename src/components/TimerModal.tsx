@@ -169,7 +169,7 @@ export default function TimerModal({
         <View style={[styles.card, isWork && styles.cardWork]}>
 
           <Text style={[styles.label, isWork && styles.labelWork]}>
-            {isWork ? 'PLANCHA' : done ? '¡LISTO!' : 'DESCANSO'}
+            {isWork ? 'TRABAJO' : done ? '¡LISTO!' : 'DESCANSO'}
           </Text>
 
           {workSeconds ? (
@@ -227,7 +227,7 @@ const styles = StyleSheet.create({
     borderColor: theme.borderColor,
   },
   cardWork: {
-    borderColor: '#FF6B35',
+    borderColor: theme.workColor,
   },
   label: {
     color: theme.textMuted,
@@ -237,7 +237,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   labelWork: {
-    color: '#FF6B35',
+    color: theme.workColor,
   },
   phaseIndicator: {
     flexDirection: 'row',
@@ -268,7 +268,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   timerWork: {
-    color: '#FF6B35',
+    color: theme.workColor,
   },
   timerDone: {
     color: theme.textColor,
