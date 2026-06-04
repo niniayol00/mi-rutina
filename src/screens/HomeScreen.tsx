@@ -174,18 +174,12 @@ export default function HomeScreen() {
     if (action === 'view_calendar') {
       if (!routine) return;
       if (saveTimeout.current) { clearTimeout(saveTimeout.current); saveTimeout.current = null; }
-      // Muestra overlay motivacional brevemente
-      setMotivationVisible(true);
       // Guarda estado limpio preservando pesos como fuente de verdad
       const clean = resetAllSeries(routine);
       const newAll = { ...allRoutines, [clean.id]: clean };
       await saveAllRoutines(newAll);
       completedShown.current = false;
-      // Espera 1.8s, oculta overlay y abre calendario
-      setTimeout(() => {
-        setMotivationVisible(false);
-        setTimeout(() => setCalendarVisible(true), 200);
-      }, 1800);
+      setCalendarVisible(true);
     } else {
       setCalendarVisible(false);
       // Animación: fade out → cargar desde storage (fuente de verdad) → fade in
@@ -499,12 +493,13 @@ export default function HomeScreen() {
 
         {done === total && total > 0 && (
           <View style={styles.completeBanner}>
+            <Text style={styles.bienHecho}>BIEN HECHO!</Text>
             {workoutDuration ? (
               <Text style={styles.durationText}>
                 Hoy terminaste la rutina en: {workoutDuration}
               </Text>
             ) : null}
-            <Text style={styles.completeText}>RUTINA COMPLETADA 🎉</Text>
+            <Text style={styles.completeText}>RUTINA COMPLETADA</Text>
             <TouchableOpacity
               style={styles.verCalendarioBtn}
               onPress={() => handleRoutineCompletion('view_calendar')}
@@ -633,7 +628,8 @@ const styles = StyleSheet.create({
   },
   limpiarBtnText: { color: theme.timerColor, fontSize: 14, fontWeight: '700' },
   completeBanner: { alignItems: 'center', paddingVertical: 24, gap: 14 },
-  durationText: { color: theme.timerColor, fontSize: 15, fontWeight: '600', textAlign: 'center' },
+  bienHecho: { color: theme.timerColor, fontSize: 32, fontWeight: '900', letterSpacing: 1, textAlign: 'center' },
+  durationText: { color: theme.textMuted, fontSize: 14, fontWeight: '500', textAlign: 'center' },
   completeText: { color: theme.timerColor, fontSize: 18, fontWeight: '700', letterSpacing: 2 },
   verCalendarioBtn: {
     backgroundColor: theme.timerColor, borderRadius: 12,
