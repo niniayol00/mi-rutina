@@ -499,6 +499,11 @@ export default function HomeScreen() {
 
         {done === total && total > 0 && (
           <View style={styles.completeBanner}>
+            {workoutDuration ? (
+              <Text style={styles.durationText}>
+                Hoy terminaste la rutina en: {workoutDuration}
+              </Text>
+            ) : null}
             <Text style={styles.completeText}>RUTINA COMPLETADA 🎉</Text>
             <TouchableOpacity
               style={styles.verCalendarioBtn}
@@ -628,6 +633,7 @@ const styles = StyleSheet.create({
   },
   limpiarBtnText: { color: theme.timerColor, fontSize: 14, fontWeight: '700' },
   completeBanner: { alignItems: 'center', paddingVertical: 24, gap: 14 },
+  durationText: { color: theme.timerColor, fontSize: 15, fontWeight: '600', textAlign: 'center' },
   completeText: { color: theme.timerColor, fontSize: 18, fontWeight: '700', letterSpacing: 2 },
   verCalendarioBtn: {
     backgroundColor: theme.timerColor, borderRadius: 12,

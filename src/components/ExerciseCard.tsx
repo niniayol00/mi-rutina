@@ -214,15 +214,7 @@ const ExerciseCard = memo(function ExerciseCard({
     <View style={[styles.card, allDone && styles.cardDone]}>
       <View style={styles.topRow}>
         <View style={styles.nameContainer}>
-          <TouchableOpacity
-            onPress={() => editable && openEdit()}
-            activeOpacity={editable ? 0.6 : 1}
-            disabled={!editable}
-          >
-            <View style={editable ? styles.editableField : undefined}>
-              <Text style={[styles.name, allDone && styles.strikeText]}>{exercise.name}</Text>
-            </View>
-          </TouchableOpacity>
+          <Text style={[styles.name, allDone && styles.strikeText]}>{exercise.name}</Text>
 
           <View style={styles.metaRow}>
             {exercise.workSeconds ? (
@@ -264,6 +256,14 @@ const ExerciseCard = memo(function ExerciseCard({
           ))}
         </View>
       </View>
+
+      {editable && (
+        <View style={styles.editRow}>
+          <TouchableOpacity onPress={openEdit} style={styles.editLink}>
+            <Text style={styles.editLinkText}>Editar</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 });
@@ -286,6 +286,22 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between', gap: 12,
   },
   nameContainer: { flex: 1 },
+  editRow: {
+    borderTopWidth: 1,
+    borderTopColor: theme.borderColor,
+    marginTop: 10,
+    paddingTop: 8,
+    alignItems: 'flex-end',
+  },
+  editLink: {
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+  },
+  editLinkText: {
+    color: theme.textMuted,
+    fontSize: 12,
+    letterSpacing: 0.5,
+  },
   editableField: {
     borderBottomWidth: 1,
     borderBottomColor: theme.borderColor,
