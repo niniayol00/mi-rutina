@@ -1,7 +1,7 @@
-import React, { memo, useState } from 'react';
+import React, { memo, useState, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, TextInput,
-  StyleSheet, Vibration, Platform,
+  StyleSheet, Vibration, Platform, PanResponder,
 } from 'react-native';
 import { Exercise } from '../types';
 import { theme } from '../constants/theme';
@@ -72,6 +72,18 @@ const ExerciseCard = memo(function ExerciseCard({
       onTimerStart(exercise.restSeconds, exercise.workSeconds);
     }
   };
+
+  // Swipe derecho → tildar próxima serie disponible
+  const swipePanResponder = useRef(PanResponder.create({
+    onStartShouldSetPanResponder: () => false,
+    onMoveShouldSetPanResponder: (_, gs) => gs.dx > 20 && Math.abs(gs.dy) < 30,
+    onPanResponderRelease: (_, gs) => {
+      if (gs.dx > 50) {
+        const nextIdx = exercise.seriesCompleted.findIndex((done) => !done);
+        if (nextIdx !== -1) handleCheck(nextIdx);
+      }
+    },
+  })).current;
 
   // ─── Edit panel ────────────────────────────────────────────────
   if (editMode) {
@@ -212,7 +224,7 @@ const ExerciseCard = memo(function ExerciseCard({
 
   // ─── Display card ──────────────────────────────────────────────
   return (
-    <View style={[styles.card, allDone && styles.cardDone]}>
+    <View style={[styles.card, allDone && styles.cardDone]} {...swipePanResponder.panHandlers}>
       <View style={styles.topRow}>
         <View style={styles.nameContainer}>
           <Text style={[styles.name, allDone && styles.strikeText]}>{exercise.name}</Text>
@@ -232,9 +244,13 @@ const ExerciseCard = memo(function ExerciseCard({
                     {exercise.weight}
                   </Text>
                 </View>
-                {previousWeight && previousWeight !== exercise.weight && !allDone && (
-                  <Text style={styles.prevWeight}>antes: {previousWeight}</Text>
-                )}
+                {previousWeight && previousWeight !== exercise.weight && !allDone && (() => {
+                  const prev = parseFloat(previousWeight);
+                  const curr = parseFloat(exercise.weight || '0');
+                  const arrow = curr > prev ? ' ↑' : curr < prev ? ' ↓' : '';
+                  const arrowColor = curr > prev ? theme.success : theme.danger;
+                  return arrow ? <Text style={[styles.weightArrow, { color: arrowColor }]}>{arrow}</Text> : null;
+                })()}
               </>
             ) : null}
 
@@ -340,6 +356,11 @@ const styles = StyleSheet.create({
     fontSize: 11,
     marginLeft: 4,
     fontStyle: 'italic',
+  },
+  weightArrow: {
+    fontSize: 13,
+    fontWeight: '800',
+    marginLeft: 2,
   },
   editHint: {
     color: theme.checkboxInactive,

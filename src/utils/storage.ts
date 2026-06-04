@@ -8,6 +8,7 @@ const SESSIONS_KEY = 'mi_rutina_sessions';
 const PROGRESS_KEY = 'mi_rutina_progress';
 const ALL_ROUTINES_KEY = 'mi_rutina_all_v3';
 const ACTIVE_ID_KEY = 'mi_rutina_active_id';
+const WELCOME_DATE_KEY = 'mi_rutina_welcome_date';
 
 export const defaultSettings: AppSettings = {
   autoStartTimerOnCheck: true,
@@ -165,6 +166,36 @@ export async function loadProgress(): Promise<ProgressData> {
     return raw ? { ...defaultProgress, ...JSON.parse(raw) } : defaultProgress;
   } catch {
     return defaultProgress;
+  }
+}
+
+export function calcStreak(trainingDates: string[]): number {
+  if (trainingDates.length === 0) return 0;
+  const sorted = [...trainingDates].sort().reverse();
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  let streak = 0;
+  let cursor = new Date(today);
+  for (const d of sorted) {
+    const date = new Date(d);
+    date.setHours(0, 0, 0, 0);
+    const diff = Math.round((cursor.getTime() - date.getTime()) / 86400000);
+    if (diff === 0) { streak++; cursor.setDate(cursor.getDate() - 1); }
+    else if (diff === 1) { streak++; cursor = new Date(date); cursor.setDate(cursor.getDate() - 1); }
+    else break;
+  }
+  return streak;
+}
+
+export async function shouldShowWelcomeToday(): Promise<boolean> {
+  try {
+    const last = await AsyncStorage.getItem(WELCOME_DATE_KEY);
+    const today = new Date().toDateString();
+    if (last === today) return false;
+    await AsyncStorage.setItem(WELCOME_DATE_KEY, today);
+    return true;
+  } catch {
+    return true;
   }
 }
 

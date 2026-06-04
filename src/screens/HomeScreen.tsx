@@ -10,7 +10,7 @@ import {
   loadActiveRoutine, saveActiveRoutine, loadSettings, saveSettings,
   checkAndResetIfNewDay, loadTrainingDates, saveTrainingDate,
   loadProgress, saveProgress, saveSession, resetAllSeries,
-  loadWeightHistory, updateWeightForExercise,
+  loadWeightHistory, updateWeightForExercise, shouldShowWelcomeToday, calcStreak,
 } from '../utils/storage';
 import { theme } from '../constants/theme';
 import TimerModal from '../components/TimerModal';
@@ -37,10 +37,11 @@ export default function HomeScreen() {
   const [addVisible, setAddVisible] = useState(false);
   const [fabMenuVisible, setFabMenuVisible] = useState(false);
   const [motivationVisible, setMotivationVisible] = useState(false);
-  const [showWelcome, setShowWelcome] = useState(true);
+  const [showWelcome, setShowWelcome] = useState(false);
   const [trainingDates, setTrainingDates] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingTitle, setEditingTitle] = useState(false);
+  const [editingFrequency, setEditingFrequency] = useState(false);
   const [sessionStart] = useState<Date>(new Date());
   const [arrivalTime, setArrivalTime] = useState<string | null>(null);
   const [departureTime, setDepartureTime] = useState<string | null>(null);
@@ -96,6 +97,8 @@ export default function HomeScreen() {
     setArrivalTime(null);
     setDepartureTime(null);
     setWorkoutDuration('');
+    const showW = await shouldShowWelcomeToday();
+    setShowWelcome(showW);
     setLoading(false);
   }, []);
 
@@ -432,7 +435,24 @@ export default function HomeScreen() {
               <Text style={styles.title}>{routine.name}</Text>
             </TouchableOpacity>
           )}
-          <Text style={styles.subtitle}>{routine.frequency}</Text>
+          {editingFrequency ? (
+            <TextInput
+              style={styles.subtitleInput}
+              value={routine.frequency}
+              onChangeText={(v) => updateAllRoutines({ ...routine, frequency: v })}
+              onBlur={() => setEditingFrequency(false)}
+              autoFocus
+              placeholder="ej: 2 veces por semana"
+              placeholderTextColor={theme.checkboxInactive}
+            />
+          ) : (
+            <TouchableOpacity onPress={() => setEditingFrequency(true)}>
+              <Text style={styles.subtitle}>{routine.frequency || 'Tocar para agregar frecuencia'}</Text>
+            </TouchableOpacity>
+          )}
+          {calcStreak(trainingDates) > 0 && (
+            <Text style={styles.streak}>🔥 {calcStreak(trainingDates)} día{calcStreak(trainingDates) !== 1 ? 's' : ''} seguidos</Text>
+          )}
           {arrivalTime && (
             <Text style={styles.timeInfo}>
               Entrada {arrivalTime}{departureTime ? `  ·  Salida ${departureTime}` : ''}
@@ -590,6 +610,11 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2, borderBottomColor: theme.timerColor, paddingVertical: 2,
   },
   subtitle: { color: theme.textMuted, fontSize: theme.fontSize.small, marginTop: 2 },
+  subtitleInput: {
+    color: theme.textMuted, fontSize: theme.fontSize.small, marginTop: 2,
+    borderBottomWidth: 1, borderBottomColor: theme.timerColor, paddingVertical: 1, minWidth: 120,
+  },
+  streak: { color: theme.warning, fontSize: 11, marginTop: 2, fontWeight: '700' },
   timeInfo: { color: theme.timerColor, fontSize: 11, marginTop: 3, fontWeight: '600' },
   clearBar: {
     backgroundColor: theme.cardBackground,
