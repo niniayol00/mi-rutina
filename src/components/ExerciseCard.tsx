@@ -31,6 +31,7 @@ const ExerciseCard = memo(function ExerciseCard({
   const [localReps, setLocalReps] = useState('');
   const [localWeight, setLocalWeight] = useState('');
   const [localRest, setLocalRest] = useState('');
+  const [localRetention, setLocalRetention] = useState('');
 
   const allDone = exercise.seriesCompleted.every(Boolean);
 
@@ -40,6 +41,7 @@ const ExerciseCard = memo(function ExerciseCard({
     setLocalReps(exercise.reps);
     setLocalWeight(exercise.weight ?? '');
     setLocalRest(String(exercise.restSeconds));
+    setLocalRetention(exercise.workSeconds ? String(exercise.workSeconds) : '');
     setConfirmingDelete(false);
     setEditMode(true);
   };
@@ -52,6 +54,7 @@ const ExerciseCard = memo(function ExerciseCard({
       reps: localReps,
       weight: localWeight || undefined,
       restSeconds: parseInt(localRest) || 0,
+      workSeconds: localRetention ? (parseInt(localRetention) || undefined) : undefined,
       series: seriesNum,
       seriesCompleted: seriesNum !== exercise.series
         ? Array(seriesNum).fill(false)
@@ -164,10 +167,26 @@ const ExerciseCard = memo(function ExerciseCard({
               placeholder="30"
               placeholderTextColor={theme.textMuted}
               inputMode="numeric"
+              returnKeyType="next"
+            />
+          </View>
+        </View>
+
+        <View style={styles.fieldRow}>
+          <View style={[styles.fieldGroup, { flex: 1 }]}>
+            <Text style={styles.fieldLabel}>Retención (seg) — opcional</Text>
+            <TextInput
+              style={styles.fieldInput}
+              value={localRetention}
+              onChangeText={setLocalRetention}
+              placeholder="ej: 30"
+              placeholderTextColor={theme.textMuted}
+              inputMode="numeric"
               returnKeyType="done"
               onSubmitEditing={saveAndClose}
             />
           </View>
+          <View style={[styles.fieldGroup, { flex: 1 }]} />
         </View>
       </View>
     );
@@ -189,7 +208,9 @@ const ExerciseCard = memo(function ExerciseCard({
           </View>
 
           <View style={styles.metaRow}>
-            {exercise.reps ? (
+            {exercise.workSeconds ? (
+              <Text style={styles.meta}>{exercise.workSeconds}seg retención</Text>
+            ) : exercise.reps ? (
               <Text style={styles.meta}>{exercise.reps} repeticiones</Text>
             ) : null}
 

@@ -6,7 +6,7 @@ const SETTINGS_KEY = 'mi_rutina_settings';
 const TRAINING_DATES_KEY = 'mi_rutina_training_dates';
 const SESSIONS_KEY = 'mi_rutina_sessions';
 const PROGRESS_KEY = 'mi_rutina_progress';
-const ALL_ROUTINES_KEY = 'mi_rutina_all_v2';
+const ALL_ROUTINES_KEY = 'mi_rutina_all_v3';
 const ACTIVE_ID_KEY = 'mi_rutina_active_id';
 
 export const defaultSettings: AppSettings = {
