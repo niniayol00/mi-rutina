@@ -291,7 +291,7 @@ const styles = StyleSheet.create({
     borderTopColor: theme.borderColor,
     marginTop: 10,
     paddingTop: 8,
-    alignItems: 'flex-end',
+    alignItems: 'flex-start',
   },
   editLink: {
     paddingHorizontal: 4,
