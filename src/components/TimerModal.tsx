@@ -119,6 +119,7 @@ export default function TimerModal({
           phaseRef.current = 'done';
           setPhase('done');
           setDone(true);
+          setTimeout(() => onClose(), 1500);
         }
       }
     }, 1000);
