@@ -122,26 +122,60 @@ const ExerciseCard = memo(function ExerciseCard({
         <View style={styles.fieldRow}>
           <View style={[styles.fieldGroup, { flex: 1 }]}>
             <Text style={styles.fieldLabel}>Series</Text>
-            <TextInput
-              style={styles.fieldInput}
-              value={localSeries}
-              onChangeText={setLocalSeries}
-              placeholder="3"
-              placeholderTextColor={theme.textMuted}
-              inputMode="numeric"
-              returnKeyType="next"
-            />
+            <View style={styles.stepper}>
+              <TouchableOpacity
+                style={styles.stepBtn}
+                onPress={() => setLocalSeries(v => String(Math.max(1, (parseInt(v) || 1) - 1)))}
+              >
+                <Text style={styles.stepBtnText}>−</Text>
+              </TouchableOpacity>
+              <TextInput
+                style={styles.stepInput}
+                value={localSeries}
+                onChangeText={setLocalSeries}
+                inputMode="numeric"
+                textAlign="center"
+                placeholderTextColor={theme.textMuted}
+              />
+              <TouchableOpacity
+                style={styles.stepBtn}
+                onPress={() => setLocalSeries(v => String(Math.min(20, (parseInt(v) || 1) + 1)))}
+              >
+                <Text style={styles.stepBtnText}>+</Text>
+              </TouchableOpacity>
+            </View>
           </View>
           <View style={[styles.fieldGroup, { flex: 1 }]}>
             <Text style={styles.fieldLabel}>Repeticiones</Text>
-            <TextInput
-              style={styles.fieldInput}
-              value={localReps}
-              onChangeText={setLocalReps}
-              placeholder="12"
-              placeholderTextColor={theme.textMuted}
-              returnKeyType="next"
-            />
+            <View style={styles.stepper}>
+              <TouchableOpacity
+                style={styles.stepBtn}
+                onPress={() => {
+                  const n = parseInt(localReps);
+                  if (!isNaN(n)) setLocalReps(String(Math.max(1, n - 1)));
+                }}
+              >
+                <Text style={styles.stepBtnText}>−</Text>
+              </TouchableOpacity>
+              <TextInput
+                style={styles.stepInput}
+                value={localReps}
+                onChangeText={setLocalReps}
+                inputMode="numeric"
+                textAlign="center"
+                placeholderTextColor={theme.textMuted}
+                placeholder="12"
+              />
+              <TouchableOpacity
+                style={styles.stepBtn}
+                onPress={() => {
+                  const n = parseInt(localReps) || 0;
+                  setLocalReps(String(Math.min(100, n + 1)));
+                }}
+              >
+                <Text style={styles.stepBtnText}>+</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
 
@@ -349,6 +383,36 @@ const styles = StyleSheet.create({
   },
   confirmNoText: { color: theme.textMuted, fontSize: 12 },
   fieldGroup: { marginBottom: 12 },
+  stepper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.sectionBackground,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: theme.borderColor,
+    overflow: 'hidden',
+  },
+  stepBtn: {
+    width: 40,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: theme.borderColor,
+  },
+  stepBtnText: {
+    color: theme.textColor,
+    fontSize: 20,
+    fontWeight: '600',
+    lineHeight: 24,
+  },
+  stepInput: {
+    flex: 1,
+    height: 44,
+    color: theme.textColor,
+    fontSize: 16,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
   fieldRow: { flexDirection: 'row', gap: 12 },
   fieldLabel: {
     color: theme.textMuted, fontSize: 11,
