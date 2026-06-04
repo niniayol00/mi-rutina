@@ -307,7 +307,7 @@ export default function HomeScreen() {
     updateAllRoutines(updated);
   };
 
-  const addExercise = (sectionIdx: number, exercise: Exercise) => {
+  const addExercise = async (sectionIdx: number, exercise: Exercise) => {
     if (!routine) return;
     const updated: Routine = {
       ...routine,
@@ -316,7 +316,10 @@ export default function HomeScreen() {
         return { ...section, exercises: [...section.exercises, exercise] };
       }),
     };
-    updateAllRoutines(updated);
+    const newAll = { ...allRoutines, [updated.id]: updated };
+    setAllRoutines(newAll);
+    // Guardar inmediatamente sin debounce para que no se pierda al cerrar
+    await saveAllRoutines(newAll);
   };
 
   const updateTitle = (newName: string) => {

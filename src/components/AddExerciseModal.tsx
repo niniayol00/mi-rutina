@@ -19,8 +19,8 @@ function generateId() {
 
 export default function AddExerciseModal({ visible, sections, onAdd, onClose }: AddExerciseModalProps) {
   const [name, setName] = useState('');
-  const [series, setSeries] = useState('3');
-  const [reps, setReps] = useState('12');
+  const [series, setSeries] = useState('1');
+  const [reps, setReps] = useState('0');
   const [weight, setWeight] = useState('');
   const [restSeconds, setRestSeconds] = useState('30');
   const [workSeconds, setWorkSeconds] = useState('');
@@ -43,8 +43,8 @@ export default function AddExerciseModal({ visible, sections, onAdd, onClose }: 
   };
 
   const reset = () => {
-    setName(''); setSeries('1'); setReps('10');
-    setWeight(''); setRestSeconds('60'); setWorkSeconds('');
+    setName(''); setSeries('1'); setReps('0');
+    setWeight(''); setRestSeconds('30'); setWorkSeconds('');
     setSectionIdx(0); setErrors({});
   };
 
@@ -109,25 +109,56 @@ export default function AddExerciseModal({ visible, sections, onAdd, onClose }: 
 
             <View style={styles.row}>
               <View style={styles.half}>
-                <Text style={styles.label}>Series (1-20) *</Text>
-                <TextInput
-                  style={[styles.input, errors.series && styles.inputError]}
-                  value={series}
-                  onChangeText={(v) => { setSeries(v); setErrors((p) => ({ ...p, series: '' })); }}
-                  placeholder="1"
-                  placeholderTextColor={theme.textMuted}
-                />
+                <Text style={styles.label}>Series *</Text>
+                <View style={styles.stepper}>
+                  <TouchableOpacity
+                    style={styles.stepBtn}
+                    onPress={() => setSeries(v => String(Math.max(1, (parseInt(v) || 1) - 1)))}
+                  >
+                    <Text style={styles.stepBtnText}>−</Text>
+                  </TouchableOpacity>
+                  <TextInput
+                    style={styles.stepInput}
+                    value={series}
+                    onChangeText={(v) => { setSeries(v); setErrors((p) => ({ ...p, series: '' })); }}
+                    inputMode="numeric"
+                    textAlign="center"
+                    placeholderTextColor={theme.textMuted}
+                  />
+                  <TouchableOpacity
+                    style={styles.stepBtn}
+                    onPress={() => setSeries(v => String(Math.min(20, (parseInt(v) || 0) + 1)))}
+                  >
+                    <Text style={styles.stepBtnText}>+</Text>
+                  </TouchableOpacity>
+                </View>
                 {errors.series ? <Text style={styles.errorText}>{errors.series}</Text> : null}
               </View>
               <View style={styles.half}>
-                <Text style={styles.label}>Repeticiones (1-100)</Text>
-                <TextInput
-                  style={[styles.input, errors.reps && styles.inputError]}
-                  value={reps}
-                  onChangeText={(v) => { setReps(v); setErrors((p) => ({ ...p, reps: '' })); }}
-                  placeholder="10"
-                  placeholderTextColor={theme.textMuted}
-                />
+                <Text style={styles.label}>Repeticiones</Text>
+                <View style={styles.stepper}>
+                  <TouchableOpacity
+                    style={styles.stepBtn}
+                    onPress={() => setReps(v => String(Math.max(0, (parseInt(v) || 0) - 1)))}
+                  >
+                    <Text style={styles.stepBtnText}>−</Text>
+                  </TouchableOpacity>
+                  <TextInput
+                    style={styles.stepInput}
+                    value={reps}
+                    onChangeText={(v) => { setReps(v); setErrors((p) => ({ ...p, reps: '' })); }}
+                    inputMode="numeric"
+                    textAlign="center"
+                    placeholder="0"
+                    placeholderTextColor={theme.textMuted}
+                  />
+                  <TouchableOpacity
+                    style={styles.stepBtn}
+                    onPress={() => setReps(v => String(Math.min(100, (parseInt(v) || 0) + 1)))}
+                  >
+                    <Text style={styles.stepBtnText}>+</Text>
+                  </TouchableOpacity>
+                </View>
                 {errors.reps ? <Text style={styles.errorText}>{errors.reps}</Text> : null}
               </View>
             </View>
@@ -281,5 +312,34 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '800',
     letterSpacing: 1,
+  },
+  stepper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.sectionBackground,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: theme.borderColor,
+    overflow: 'hidden',
+  },
+  stepBtn: {
+    width: 44,
+    height: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: theme.borderColor,
+  },
+  stepBtnText: {
+    color: theme.textColor,
+    fontSize: 22,
+    fontWeight: '600',
+  },
+  stepInput: {
+    flex: 1,
+    height: 48,
+    color: theme.textColor,
+    fontSize: 18,
+    fontWeight: '700',
+    textAlign: 'center',
   },
 });
