@@ -9,6 +9,7 @@ const PROGRESS_KEY = 'mi_rutina_progress';
 const ALL_ROUTINES_KEY = 'mi_rutina_all_v3';
 const ACTIVE_ID_KEY = 'mi_rutina_active_id';
 const WELCOME_DATE_KEY = 'mi_rutina_welcome_date';
+const SESSION_START_KEY = 'mi_rutina_session_start';
 
 export const defaultSettings: AppSettings = {
   autoStartTimerOnCheck: true,
@@ -119,6 +120,7 @@ export async function checkAndResetIfNewDay(
     const newSettings = { ...settings, lastResetDate: today };
     await saveActiveRoutine(resetRoutine);
     await saveSettings(newSettings);
+    await clearSessionStart();
     return { routine: resetRoutine, settings: newSettings };
   }
   return { routine, settings };
@@ -222,4 +224,21 @@ export async function updateWeightForExercise(exerciseName: string, weight: stri
   const history = await loadWeightHistory();
   history[exerciseName.toLowerCase().trim()] = weight;
   await saveWeightHistory(history);
+}
+
+// ─── Session Start Time ───────────────────────────────────────────
+
+export async function loadSessionStart(): Promise<Date | null> {
+  try {
+    const raw = await AsyncStorage.getItem(SESSION_START_KEY);
+    return raw ? new Date(raw) : null;
+  } catch { return null; }
+}
+
+export async function saveSessionStart(date: Date): Promise<void> {
+  await AsyncStorage.setItem(SESSION_START_KEY, date.toISOString());
+}
+
+export async function clearSessionStart(): Promise<void> {
+  await AsyncStorage.removeItem(SESSION_START_KEY);
 }

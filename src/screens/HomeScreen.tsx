@@ -11,6 +11,7 @@ import {
   checkAndResetIfNewDay, loadTrainingDates, saveTrainingDate,
   loadProgress, saveProgress, saveSession, resetAllSeries,
   loadWeightHistory, updateWeightForExercise, shouldShowWelcomeToday, calcStreak,
+  loadSessionStart, saveSessionStart, clearSessionStart,
 } from '../utils/storage';
 import { theme } from '../constants/theme';
 import TimerModal from '../components/TimerModal';
@@ -42,7 +43,7 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [editingTitle, setEditingTitle] = useState(false);
   const [editingFrequency, setEditingFrequency] = useState(false);
-  const [sessionStart] = useState<Date>(new Date());
+  const [sessionStart, setSessionStart] = useState<Date>(new Date());
   const [arrivalTime, setArrivalTime] = useState<string | null>(null);
   const [departureTime, setDepartureTime] = useState<string | null>(null);
   const [workoutDuration, setWorkoutDuration] = useState<string>('');
@@ -58,8 +59,8 @@ export default function HomeScreen() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [all, activeIdRaw, s, dates, wh] = await Promise.all([
-      loadAllRoutines(), loadActiveRoutineId(), loadSettings(), loadTrainingDates(), loadWeightHistory(),
+    const [all, activeIdRaw, s, dates, wh, savedStart] = await Promise.all([
+      loadAllRoutines(), loadActiveRoutineId(), loadSettings(), loadTrainingDates(), loadWeightHistory(), loadSessionStart(),
     ]);
 
     const currentId = (all[activeIdRaw] ? activeIdRaw : Object.keys(all)[0]) ?? '';
@@ -84,6 +85,7 @@ export default function HomeScreen() {
         const clean = resetAllSeries(active);
         finalAll = { ...finalAll, [currentId]: clean };
         await saveAllRoutines(finalAll);
+        await clearSessionStart();
       }
     }
 
@@ -94,7 +96,17 @@ export default function HomeScreen() {
     setWeightHistory(wh);
     completedShown.current = false;
     firstCheckDone.current = false;
-    setArrivalTime(null);
+
+    // Restaurar sessionStart desde storage o usar el actual
+    if (savedStart) {
+      setSessionStart(savedStart);
+      const h = String(savedStart.getHours()).padStart(2, '0');
+      const m = String(savedStart.getMinutes()).padStart(2, '0');
+      setArrivalTime(`${h}:${m}`);
+    } else {
+      setArrivalTime(null);
+    }
+
     setDepartureTime(null);
     setWorkoutDuration('');
     const showW = await shouldShowWelcomeToday();
@@ -188,6 +200,7 @@ export default function HomeScreen() {
       const clean = resetAllSeries(routine);
       const newAll = { ...allRoutines, [clean.id]: clean };
       await saveAllRoutines(newAll);
+      await clearSessionStart();
       completedShown.current = false;
       setCalendarVisible(true);
     } else {
@@ -198,6 +211,9 @@ export default function HomeScreen() {
       }).start(async () => {
         const freshAll = await loadAllRoutines();
         setAllRoutines(freshAll);
+        setArrivalTime(null);
+        setDepartureTime(null);
+        setWorkoutDuration('');
         Animated.timing(listOpacity, {
           toValue: 1, duration: 350, useNativeDriver: true,
         }).start();
@@ -371,17 +387,23 @@ export default function HomeScreen() {
     const clean = resetAllSeries(routine);
     const newAll = { ...allRoutines, [clean.id]: clean };
     await saveAllRoutines(newAll);
+    await clearSessionStart();
     Animated.timing(listOpacity, { toValue: 0, duration: 200, useNativeDriver: true }).start(() => {
       setAllRoutines(newAll);
+      setArrivalTime(null);
+      setDepartureTime(null);
+      setWorkoutDuration('');
       Animated.timing(listOpacity, { toValue: 1, duration: 300, useNativeDriver: true }).start();
     });
   };
 
-  const handleStart = () => {
+  const handleStart = async () => {
     const now = new Date();
     const h = String(now.getHours()).padStart(2, '0');
     const m = String(now.getMinutes()).padStart(2, '0');
     setArrivalTime(`${h}:${m}`);
+    setSessionStart(now);
+    await saveSessionStart(now);
     setShowWelcome(false);
   };
 

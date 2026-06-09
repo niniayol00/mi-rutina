@@ -6,7 +6,7 @@ import {
   saveActiveRoutine, loadSettings, saveSettings, checkAndResetIfNewDay,
   loadTrainingDates, saveTrainingDate, loadProgress, saveProgress,
   saveSession, resetAllSeries, loadWeightHistory, updateWeightForExercise,
-  shouldShowWelcomeToday,
+  shouldShowWelcomeToday, loadSessionStart, saveSessionStart, clearSessionStart,
 } from '../utils/storage';
 
 function generateId() {
@@ -36,9 +36,9 @@ export function useRoutineSession() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [all, activeIdRaw, s, dates, wh] = await Promise.all([
+    const [all, activeIdRaw, s, dates, wh, savedStart] = await Promise.all([
       loadAllRoutines(), loadActiveRoutineId(), loadSettings(),
-      loadTrainingDates(), loadWeightHistory(),
+      loadTrainingDates(), loadWeightHistory(), loadSessionStart(),
     ]);
     const currentId = (all[activeIdRaw] ? activeIdRaw : Object.keys(all)[0]) ?? '';
     const current = all[currentId];
@@ -58,6 +58,7 @@ export function useRoutineSession() {
         const clean = resetAllSeries(active);
         finalAll = { ...finalAll, [currentId]: clean };
         await saveAllRoutines(finalAll);
+        await clearSessionStart();
       }
     }
     setAllRoutines(finalAll);
@@ -67,8 +68,18 @@ export function useRoutineSession() {
     setWeightHistory(wh);
     completedShown.current = false;
     firstCheckDone.current = false;
-    sessionStart.current = new Date();
-    setArrivalTime(null);
+
+    // Restaurar sessionStart desde storage o crear uno nuevo
+    if (savedStart) {
+      sessionStart.current = savedStart;
+      const h = String(savedStart.getHours()).padStart(2, '0');
+      const m = String(savedStart.getMinutes()).padStart(2, '0');
+      setArrivalTime(`${h}:${m}`);
+    } else {
+      sessionStart.current = new Date();
+      setArrivalTime(null);
+    }
+
     setDepartureTime(null);
     setWorkoutDuration('');
     const showW = await shouldShowWelcomeToday();
@@ -304,15 +315,21 @@ export function useRoutineSession() {
     const clean = resetAllSeries(routine);
     const newAll = { ...allRoutines, [clean.id]: clean };
     await saveAllRoutines(newAll);
+    await clearSessionStart();
     setAllRoutines(newAll);
     completedShown.current = false;
+    setArrivalTime(null);
+    setDepartureTime(null);
+    setWorkoutDuration('');
   };
 
-  const handleStart = () => {
+  const handleStart = async () => {
     const now = new Date();
     const h = String(now.getHours()).padStart(2, '0');
     const m = String(now.getMinutes()).padStart(2, '0');
     setArrivalTime(`${h}:${m}`);
+    sessionStart.current = now;
+    await saveSessionStart(now);
     setShowWelcome(false);
   };
 
