@@ -246,8 +246,14 @@ export default function HomeScreen() {
 
   // ─── Exercise actions ────────────────────────────────────────────
 
-  const toggleSeries = (sectionIdx: number, exerciseIdx: number, seriesIdx: number) => {
+  const toggleSeries = async (sectionIdx: number, exerciseIdx: number, seriesIdx: number) => {
     if (!routine) return;
+
+    // Verificar si es el primer tilde marcado
+    const isFirstCheck = !arrivalTime && routine.sections.every((s) =>
+      s.exercises.every((ex) => ex.seriesCompleted.every((c) => !c))
+    );
+
     const updated: Routine = {
       ...routine,
       sections: routine.sections.map((section, si) => {
@@ -263,6 +269,17 @@ export default function HomeScreen() {
         };
       }),
     };
+
+    // Si es el primer tilde y se está marcando (no desmarcando), registrar hora de entrada
+    if (isFirstCheck && updated.sections[sectionIdx].exercises[exerciseIdx].seriesCompleted[seriesIdx]) {
+      const now = new Date();
+      const h = String(now.getHours()).padStart(2, '0');
+      const m = String(now.getMinutes()).padStart(2, '0');
+      setArrivalTime(`${h}:${m}`);
+      setSessionStart(now);
+      await saveSessionStart(now);
+    }
+
     updateAllRoutines(updated);
     checkAllCompleted(updated);
   };
@@ -472,8 +489,8 @@ export default function HomeScreen() {
               <Text style={styles.subtitle}>{routine.frequency || 'Tocar para agregar frecuencia'}</Text>
             </TouchableOpacity>
           )}
-          {calcStreak(trainingDates) > 0 && (
-            <Text style={styles.streak}>🔥 {calcStreak(trainingDates)} día{calcStreak(trainingDates) !== 1 ? 's' : ''} seguidos</Text>
+          {calcStreak(trainingDates) > 1 && (
+            <Text style={styles.streak}>🔥 {calcStreak(trainingDates)} días seguidos</Text>
           )}
           {arrivalTime && (
             <Text style={styles.timeInfo}>

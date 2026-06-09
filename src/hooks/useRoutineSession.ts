@@ -156,8 +156,14 @@ export function useRoutineSession() {
 
   // ─── Exercise actions ─────────────────────────────────────────────
 
-  const toggleSeries = (sectionIdx: number, exerciseIdx: number, seriesIdx: number) => {
+  const toggleSeries = async (sectionIdx: number, exerciseIdx: number, seriesIdx: number) => {
     if (!routine) return;
+
+    // Verificar si es el primer tilde marcado
+    const isFirstCheck = !arrivalTime && routine.sections.every((s) =>
+      s.exercises.every((ex) => ex.seriesCompleted.every((c) => !c))
+    );
+
     const updated: Routine = {
       ...routine,
       sections: routine.sections.map((section, si) => {
@@ -173,6 +179,17 @@ export function useRoutineSession() {
         };
       }),
     };
+
+    // Si es el primer tilde y se está marcando (no desmarcando), registrar hora de entrada
+    if (isFirstCheck && updated.sections[sectionIdx].exercises[exerciseIdx].seriesCompleted[seriesIdx]) {
+      const now = new Date();
+      const h = String(now.getHours()).padStart(2, '0');
+      const m = String(now.getMinutes()).padStart(2, '0');
+      setArrivalTime(`${h}:${m}`);
+      sessionStart.current = now;
+      await saveSessionStart(now);
+    }
+
     updateAllRoutines(updated);
     checkAllCompleted(updated);
   };
