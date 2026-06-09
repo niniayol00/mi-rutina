@@ -9,7 +9,10 @@ import {
   Vibration,
   Platform,
 } from 'react-native';
+import Svg, { Circle } from 'react-native-svg';
 import { theme } from '../constants/theme';
+
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 function playBeep(type: 'phase' | 'finish') {
   if (Platform.OS !== 'web') return;
@@ -67,11 +70,13 @@ export default function TimerModal({
 
   const phaseRef = useRef<Phase>(workSeconds ? 'work' : 'rest');
   const remainingRef = useRef(workSeconds || seconds);
+  const totalSecondsRef = useRef(workSeconds || seconds);
   const restSecondsRef = useRef(seconds);
   const soundRef = useRef(soundOnFinish);
   const vibrationRef = useRef(vibrationOnFinish);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  const progressAnim = useRef(new Animated.Value(0)).current;
 
   soundRef.current = soundOnFinish;
   vibrationRef.current = vibrationOnFinish;
@@ -91,11 +96,21 @@ export default function TimerModal({
     }
   };
 
+  const updateProgress = useCallback(() => {
+    const progress = remainingRef.current / totalSecondsRef.current;
+    Animated.timing(progressAnim, {
+      toValue: progress,
+      duration: 200,
+      useNativeDriver: true,
+    }).start();
+  }, [progressAnim]);
+
   const startInterval = useCallback(() => {
     stopInterval();
     intervalRef.current = setInterval(() => {
       remainingRef.current -= 1;
       setRemaining(remainingRef.current);
+      updateProgress();
 
       if (remainingRef.current <= 0) {
         stopInterval();
@@ -108,8 +123,10 @@ export default function TimerModal({
 
           phaseRef.current = 'rest';
           remainingRef.current = restSecondsRef.current;
+          totalSecondsRef.current = restSecondsRef.current;
           setPhase('rest');
           setRemaining(restSecondsRef.current);
+          progressAnim.setValue(1);
           startInterval();
         } else {
           // All done
@@ -123,7 +140,7 @@ export default function TimerModal({
         }
       }
     }, 1000);
-  }, [startPulse]);
+  }, [startPulse, updateProgress, progressAnim]);
 
   useEffect(() => {
     if (visible) {
@@ -132,15 +149,17 @@ export default function TimerModal({
 
       phaseRef.current = startPhase;
       remainingRef.current = startRemaining;
+      totalSecondsRef.current = startRemaining;
       setPhase(startPhase);
       setRemaining(startRemaining);
       setDone(false);
+      progressAnim.setValue(1);
       startInterval();
     } else {
       stopInterval();
     }
     return stopInterval;
-  }, [visible]);
+  }, [visible, progressAnim]);
 
   const addTime = (secs: number) => {
     if (done) return;
@@ -164,6 +183,18 @@ export default function TimerModal({
 
   const isWork = phase === 'work';
 
+  const circleSize = 240;
+  const strokeWidth = 8;
+  const radius = (circleSize - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+
+  const strokeDashoffset = progressAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [circumference, 0],
+  });
+
+  const timerColor = isWork ? theme.workColor : theme.timerColor;
+
   return (
     <Modal visible={visible} transparent animationType="fade" statusBarTranslucent>
       <View style={styles.overlay}>
@@ -181,16 +212,43 @@ export default function TimerModal({
             </View>
           ) : null}
 
-          <Animated.Text
-            style={[
-              styles.timer,
-              { transform: [{ scale: pulseAnim }] },
-              isWork && styles.timerWork,
-              done && styles.timerDone,
-            ]}
-          >
-            {done ? '0' : formatTime(remaining)}
-          </Animated.Text>
+          <View style={styles.timerContainer}>
+            <Svg width={circleSize} height={circleSize} style={styles.circleContainer}>
+              {/* Background circle */}
+              <Circle
+                cx={circleSize / 2}
+                cy={circleSize / 2}
+                r={radius}
+                stroke="rgba(57, 255, 20, 0.1)"
+                strokeWidth={strokeWidth}
+                fill="none"
+              />
+              {/* Progress circle */}
+              <AnimatedCircle
+                cx={circleSize / 2}
+                cy={circleSize / 2}
+                r={radius}
+                stroke={timerColor}
+                strokeWidth={strokeWidth}
+                fill="none"
+                strokeDasharray={circumference}
+                strokeDashoffset={strokeDashoffset}
+                strokeLinecap="round"
+                rotation="-90"
+                origin={`${circleSize / 2}, ${circleSize / 2}`}
+              />
+            </Svg>
+            <Animated.Text
+              style={[
+                styles.timer,
+                { transform: [{ scale: pulseAnim }] },
+                isWork && styles.timerWork,
+                done && styles.timerDone,
+              ]}
+            >
+              {done ? '0' : formatTime(remaining)}
+            </Animated.Text>
+          </View>
 
           <TouchableOpacity style={styles.skipBtn} onPress={onClose}>
             <Text style={styles.skipText}>SALTAR</Text>
@@ -250,12 +308,20 @@ const styles = StyleSheet.create({
     height: 2,
     backgroundColor: theme.borderColor,
   },
+  timerContainer: {
+    position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginVertical: 20,
+  },
+  circleContainer: {
+    position: 'absolute',
+  },
   timer: {
-    fontSize: theme.fontSize.timer,
+    fontSize: 72,
     fontWeight: '700',
     color: theme.timerColor,
     fontVariant: ['tabular-nums'],
-    minWidth: 140,
     textAlign: 'center',
   },
   timerWork: {
