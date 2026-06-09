@@ -19,7 +19,7 @@ import CalendarModal from '../components/CalendarModal';
 import AddExerciseModal from '../components/AddExerciseModal';
 import DraggableExerciseList from '../components/DraggableExerciseList';
 import FabMenu from '../components/FabMenu';
-import MotivationOverlay from '../components/MotivationOverlay';
+import CompletionModal from '../components/CompletionModal';
 import WelcomeScreen from '../components/WelcomeScreen';
 
 function generateId() {
@@ -37,7 +37,7 @@ export default function HomeScreen() {
   const [calendarVisible, setCalendarVisible] = useState(false);
   const [addVisible, setAddVisible] = useState(false);
   const [fabMenuVisible, setFabMenuVisible] = useState(false);
-  const [motivationVisible, setMotivationVisible] = useState(false);
+  const [completionVisible, setCompletionVisible] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
   const [trainingDates, setTrainingDates] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -173,10 +173,6 @@ export default function HomeScreen() {
     const updatedDates = await saveTrainingDate(today);
     setTrainingDates(updatedDates);
 
-    // Mostrar overlay motivacional brevemente
-    setMotivationVisible(true);
-    setTimeout(() => setMotivationVisible(false), 2200);
-
     // Registrar hora de salida y calcular duración
     const depH = String(endTime.getHours()).padStart(2, '0');
     const depM = String(endTime.getMinutes()).padStart(2, '0');
@@ -188,37 +184,41 @@ export default function HomeScreen() {
       ? `${hours} hora${hours > 1 ? 's' : ''} ${mins > 0 ? `${mins} minuto${mins > 1 ? 's' : ''}` : ''}`
       : `${mins} minuto${mins !== 1 ? 's' : ''}`;
     setWorkoutDuration(durStr.trim());
+
+    // Mostrar modal de completado
+    setCompletionVisible(true);
   }, [sessionStart]);
 
   // ─── handleRoutineCompletion ─────────────────────────────────────
 
-  const handleRoutineCompletion = async (action: 'view_calendar' | 'close_calendar') => {
-    if (action === 'view_calendar') {
-      if (!routine) return;
-      if (saveTimeout.current) { clearTimeout(saveTimeout.current); saveTimeout.current = null; }
-      // Guarda estado limpio preservando pesos como fuente de verdad
-      const clean = resetAllSeries(routine);
-      const newAll = { ...allRoutines, [clean.id]: clean };
-      await saveAllRoutines(newAll);
-      await clearSessionStart();
-      completedShown.current = false;
-      setCalendarVisible(true);
-    } else {
-      setCalendarVisible(false);
-      // Animación: fade out → cargar desde storage (fuente de verdad) → fade in
+  const handleViewCalendar = async () => {
+    if (!routine) return;
+    setCompletionVisible(false);
+    if (saveTimeout.current) { clearTimeout(saveTimeout.current); saveTimeout.current = null; }
+    // Guarda estado limpio preservando pesos como fuente de verdad
+    const clean = resetAllSeries(routine);
+    const newAll = { ...allRoutines, [clean.id]: clean };
+    await saveAllRoutines(newAll);
+    await clearSessionStart();
+    completedShown.current = false;
+    setCalendarVisible(true);
+  };
+
+  const handleCloseCalendar = () => {
+    setCalendarVisible(false);
+    // Animación: fade out → cargar desde storage (fuente de verdad) → fade in
+    Animated.timing(listOpacity, {
+      toValue: 0, duration: 250, useNativeDriver: true,
+    }).start(async () => {
+      const freshAll = await loadAllRoutines();
+      setAllRoutines(freshAll);
+      setArrivalTime(null);
+      setDepartureTime(null);
+      setWorkoutDuration('');
       Animated.timing(listOpacity, {
-        toValue: 0, duration: 250, useNativeDriver: true,
-      }).start(async () => {
-        const freshAll = await loadAllRoutines();
-        setAllRoutines(freshAll);
-        setArrivalTime(null);
-        setDepartureTime(null);
-        setWorkoutDuration('');
-        Animated.timing(listOpacity, {
-          toValue: 1, duration: 350, useNativeDriver: true,
-        }).start();
-      });
-    }
+        toValue: 1, duration: 350, useNativeDriver: true,
+      }).start();
+    });
   };
 
   const duplicateRoutine = async () => {
@@ -559,24 +559,6 @@ export default function HomeScreen() {
           </View>
         ))}
 
-        {done === total && total > 0 && (
-          <View style={styles.completeBanner}>
-            <Text style={styles.bienHecho}>BIEN HECHO!</Text>
-            {workoutDuration ? (
-              <Text style={styles.durationText}>
-                Hoy terminaste la rutina en: {workoutDuration}
-              </Text>
-            ) : null}
-            <Text style={styles.completeText}>RUTINA COMPLETADA</Text>
-            <TouchableOpacity
-              style={styles.verCalendarioBtn}
-              onPress={() => handleRoutineCompletion('view_calendar')}
-            >
-              <Text style={styles.verCalendarioBtnText}>VER CALENDARIO</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
         {done > 0 && done < total && (
           <TouchableOpacity style={styles.clearBar} onPress={limpiarTildes}>
             <Text style={styles.clearBarText}>Borrar todos los tildes</Text>
@@ -600,7 +582,7 @@ export default function HomeScreen() {
       <CalendarModal
         visible={calendarVisible}
         trainingDates={trainingDates}
-        onClose={() => handleRoutineCompletion('close_calendar')}
+        onClose={handleCloseCalendar}
       />
 
       <AddExerciseModal
@@ -619,10 +601,11 @@ export default function HomeScreen() {
         onHistorial={() => router.push('/historial')}
       />
 
-      <MotivationOverlay
-        visible={motivationVisible}
-        routineName={routine.name}
+      <CompletionModal
+        visible={completionVisible}
+        userName="Yol"
         duration={workoutDuration}
+        onViewCalendar={handleViewCalendar}
       />
 
       {showWelcome && !loading && (
@@ -709,15 +692,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12, paddingHorizontal: 32, marginVertical: 8,
   },
   limpiarBtnText: { color: theme.timerColor, fontSize: 14, fontWeight: '700' },
-  completeBanner: { alignItems: 'center', paddingVertical: 24, gap: 14 },
-  bienHecho: { color: theme.timerColor, fontSize: 32, fontWeight: '900', letterSpacing: 1, textAlign: 'center' },
-  durationText: { color: theme.textMuted, fontSize: 14, fontWeight: '500', textAlign: 'center' },
-  completeText: { color: theme.timerColor, fontSize: 18, fontWeight: '700', letterSpacing: 2 },
-  verCalendarioBtn: {
-    backgroundColor: theme.timerColor, borderRadius: 12,
-    paddingVertical: 12, paddingHorizontal: 32,
-  },
-  verCalendarioBtnText: { color: '#000', fontWeight: '800', fontSize: 14, letterSpacing: 2 },
   fab: {
     position: 'absolute', bottom: 32, right: 24,
     width: 52, height: 52, borderRadius: 26,
