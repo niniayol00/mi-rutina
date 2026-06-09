@@ -64,7 +64,6 @@ export default function TimerModal({
   const [phase, setPhase] = useState<Phase>(workSeconds ? 'work' : 'rest');
   const [remaining, setRemaining] = useState(workSeconds || seconds);
   const [done, setDone] = useState(false);
-  const [paused, setPaused] = useState(false);
 
   const phaseRef = useRef<Phase>(workSeconds ? 'work' : 'rest');
   const remainingRef = useRef(workSeconds || seconds);
@@ -136,7 +135,6 @@ export default function TimerModal({
       setPhase(startPhase);
       setRemaining(startRemaining);
       setDone(false);
-      setPaused(false);
       startInterval();
     } else {
       stopInterval();
@@ -193,19 +191,6 @@ export default function TimerModal({
           >
             {done ? '0' : formatTime(remaining)}
           </Animated.Text>
-
-
-          {!done && (
-            <TouchableOpacity
-              style={styles.pauseBtn}
-              onPress={() => {
-                if (paused) { setPaused(false); startInterval(); }
-                else { setPaused(true); stopInterval(); }
-              }}
-            >
-              <Text style={styles.pauseBtnText}>{paused ? '▶ CONTINUAR' : '⏸ PAUSA'}</Text>
-            </TouchableOpacity>
-          )}
 
           <TouchableOpacity style={styles.skipBtn} onPress={onClose}>
             <Text style={styles.skipText}>SALTAR</Text>
@@ -297,22 +282,8 @@ const styles = StyleSheet.create({
     color: theme.textMuted,
     fontSize: 13,
   },
-  pauseBtn: {
-    marginTop: 24,
-    paddingVertical: 12,
-    paddingHorizontal: 32,
-    borderRadius: 30,
-    borderWidth: 1,
-    borderColor: theme.timerColor,
-  },
-  pauseBtnText: {
-    color: theme.timerColor,
-    fontSize: 14,
-    fontWeight: '700',
-    letterSpacing: 1,
-  },
   skipBtn: {
-    marginTop: 12,
+    marginTop: 24,
     paddingVertical: 10,
     paddingHorizontal: 40,
     borderRadius: 30,
