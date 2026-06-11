@@ -41,7 +41,7 @@ export const initialRoutine: Routine = {
 
 export const defaultRoutine: Routine = {
   id: 'r1',
-  name: 'Rutina de ejemplo',
+  name: 'Rutina ejemplo',
   frequency: '2 veces por semana',
   startDate: '2026-04-20',
   renewDate: '2026-06-20',
