@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Stack } from 'expo-router';
+import Head from 'expo-router/head';
 import { StatusBar } from 'expo-status-bar';
 import { View } from 'react-native';
 import { theme } from '../src/constants/theme';
@@ -20,9 +21,14 @@ export default function RootLayout() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.backgroundColor }}>
+      <Head>
+        <title>Mi Rutina</title>
+        <meta name="description" content="Tu libreta digital de entrenamiento" />
+      </Head>
       <StatusBar style="light" />
       <Stack
         screenOptions={{
+          title: 'Mi Rutina',
           headerStyle: { backgroundColor: theme.backgroundColor },
           headerTintColor: theme.textColor,
           headerShadowVisible: false,

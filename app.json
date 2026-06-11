@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Mi_rutinapp",
+    "name": "Mi Rutina",
     "slug": "mi-rutina",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -13,7 +13,7 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.mirутина.app"
+      "bundleIdentifier": "com.mirutina.app"
     },
     "android": {
       "adaptiveIcon": {
@@ -28,7 +28,8 @@
     "scheme": "mirutina",
     "web": {
       "bundler": "metro",
-      "output": "static"
+      "output": "static",
+      "favicon": "./assets/favicon.png"
     },
     "experiments": {
       "baseUrl": "/mi-rutina"
