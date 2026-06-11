@@ -1,7 +1,7 @@
-import React, { memo, useState, useRef } from 'react';
+import React, { memo, useState, useRef, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, TextInput,
-  StyleSheet, Vibration, Platform, PanResponder,
+  StyleSheet, Vibration, Platform, PanResponder, Animated,
 } from 'react-native';
 import { Exercise } from '../types';
 import { theme } from '../constants/theme';
@@ -35,6 +35,16 @@ const ExerciseCard = memo(function ExerciseCard({
   const [localRetention, setLocalRetention] = useState('');
 
   const allDone = exercise.seriesCompleted.every(Boolean);
+
+  // Micro-interacción: fade suave al completar/descompletar el ejercicio
+  const doneAnim = useRef(new Animated.Value(allDone ? 0.35 : 1)).current;
+  useEffect(() => {
+    Animated.timing(doneAnim, {
+      toValue: allDone ? 0.35 : 1,
+      duration: 280,
+      useNativeDriver: true,
+    }).start();
+  }, [allDone]);
 
   const openEdit = () => {
     setLocalName(exercise.name);
@@ -224,7 +234,7 @@ const ExerciseCard = memo(function ExerciseCard({
 
   // ─── Display card ──────────────────────────────────────────────
   return (
-    <View style={[styles.card, allDone && styles.cardDone]} {...swipePanResponder.panHandlers}>
+    <Animated.View style={[styles.card, { opacity: doneAnim }]} {...swipePanResponder.panHandlers}>
       <View style={styles.topRow}>
         <View style={styles.nameContainer}>
           <Text style={[styles.name, allDone && styles.strikeText]}>{exercise.name}</Text>
@@ -284,7 +294,7 @@ const ExerciseCard = memo(function ExerciseCard({
           </TouchableOpacity>
         </View>
       )}
-    </View>
+    </Animated.View>
   );
 });
 

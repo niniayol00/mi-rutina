@@ -66,10 +66,28 @@ export default function TodayScreen() {
     );
   }
 
-  const active = routines.find((r) => r.id === activeId) ?? routines[0];
-  const others = routines.filter((r) => r.id !== active?.id);
   const now = new Date();
   const dateLabel = `${DAYS[now.getDay()]} ${now.getDate()} de ${MONTHS[now.getMonth()]}`;
+
+  if (routines.length === 0) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyTitle}>Mi Rutina</Text>
+          <Text style={styles.emptySubtitle}>Tu libreta digital de entrenamiento</Text>
+          <Text style={styles.emptyDescription}>
+            Convertí cualquier rutina en una lista interactiva y seguí tu progreso.
+          </Text>
+          <TouchableOpacity style={styles.emptyBtn} onPress={() => router.push('/input')}>
+            <Text style={styles.emptyBtnText}>Crear mi primera rutina</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
+  const active = routines.find((r) => r.id === activeId) ?? routines[0];
+  const others = routines.filter((r) => r.id !== active?.id);
 
   return (
     <View style={styles.container}>
@@ -97,7 +115,8 @@ export default function TodayScreen() {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>MIS RUTINAS</Text>
             {others.map((r) => {
-              const color = categoryColors[r.category ?? 'Personalizada'];
+              const cat = r.category ?? 'Personalizada';
+              const color = categoryColors[cat];
               const last = lastRun(r);
               return (
                 <TouchableOpacity key={r.id} style={styles.routineRow} onPress={() => openRoutine(r.id)}>
@@ -105,8 +124,9 @@ export default function TodayScreen() {
                   <View style={styles.routineInfo}>
                     <Text style={styles.routineName} numberOfLines={1}>{r.name}</Text>
                     <Text style={styles.routineMeta}>
-                      {countExercises(r)} ejercicios
-                      {last ? `  ·  Última vez: ${formatShortDate(last)}` : ''}
+                      <Text style={{ color }}>{cat}</Text>
+                      {`  ·  ${countExercises(r)} ejercicios`}
+                      {last ? `  ·  ${formatShortDate(last)}` : ''}
                     </Text>
                   </View>
                   <Text style={styles.routineArrow}>›</Text>
@@ -168,4 +188,19 @@ const styles = StyleSheet.create({
   routineName: { color: theme.textColor, fontSize: 16, fontWeight: '600' },
   routineMeta: { color: theme.textMuted, fontSize: 12, marginTop: 2 },
   routineArrow: { color: theme.textMuted, fontSize: 22, marginLeft: 8 },
+  emptyState: {
+    flex: 1, justifyContent: 'center', alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  emptyTitle: { color: theme.textColor, fontSize: 30, fontWeight: '800' },
+  emptySubtitle: { color: theme.timerColor, fontSize: 15, fontWeight: '600', marginTop: 6 },
+  emptyDescription: {
+    color: theme.textMuted, fontSize: 14, textAlign: 'center',
+    marginTop: 16, lineHeight: 21,
+  },
+  emptyBtn: {
+    backgroundColor: theme.timerColor, borderRadius: 14,
+    paddingVertical: 15, paddingHorizontal: 28, marginTop: 28,
+  },
+  emptyBtnText: { color: '#000', fontSize: 15, fontWeight: '800' },
 });

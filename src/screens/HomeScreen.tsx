@@ -455,8 +455,8 @@ export default function HomeScreen() {
 
   // ─── Progress ────────────────────────────────────────────────────
 
-  const { done, total, exDone, exTotal } = (() => {
-    if (!routine) return { done: 0, total: 0, exDone: 0, exTotal: 0 };
+  const { done, total, exDone, exTotal, pct } = (() => {
+    if (!routine) return { done: 0, total: 0, exDone: 0, exTotal: 0, pct: 0 };
     let done = 0, total = 0, exDone = 0, exTotal = 0;
     routine.sections.forEach((s) =>
       s.exercises.forEach((ex) => {
@@ -466,7 +466,8 @@ export default function HomeScreen() {
         if (ex.seriesCompleted.length > 0 && ex.seriesCompleted.every(Boolean)) exDone += 1;
       })
     );
-    return { done, total, exDone, exTotal };
+    const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+    return { done, total, exDone, exTotal, pct };
   })();
 
   // ─── Render ──────────────────────────────────────────────────────
@@ -530,10 +531,13 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      {/* Progress bar */}
+      {/* Progress bar + porcentaje */}
       {total > 0 && (
-        <View style={styles.progressBarContainer}>
-          <View style={[styles.progressBar, { width: `${(done / total) * 100}%` }]} />
+        <View style={styles.progressRow}>
+          <View style={styles.progressBarContainer}>
+            <View style={[styles.progressBar, { width: `${pct}%` }]} />
+          </View>
+          <Text style={styles.progressPct}>{pct}%</Text>
         </View>
       )}
 
@@ -707,11 +711,18 @@ const styles = StyleSheet.create({
   switcherTabActive: { backgroundColor: theme.timerColor, borderColor: theme.timerColor },
   switcherText: { color: theme.textMuted, fontSize: 13 },
   switcherTextActive: { color: '#000', fontWeight: '700' },
-  progressBarContainer: {
-    height: 2, backgroundColor: theme.borderColor,
-    marginHorizontal: 20, borderRadius: 1, marginBottom: 8, marginTop: 4,
+  progressRow: {
+    flexDirection: 'row', alignItems: 'center',
+    marginHorizontal: 20, marginBottom: 8, marginTop: 4, gap: 10,
   },
-  progressBar: { height: 2, backgroundColor: theme.timerColor, borderRadius: 1 },
+  progressBarContainer: {
+    flex: 1, height: 4, backgroundColor: theme.borderColor, borderRadius: 2,
+  },
+  progressBar: { height: 4, backgroundColor: theme.timerColor, borderRadius: 2 },
+  progressPct: {
+    color: theme.timerColor, fontSize: 12, fontWeight: '700',
+    minWidth: 38, textAlign: 'right',
+  },
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 16, paddingTop: 8 },
   section: { marginBottom: 24 },
