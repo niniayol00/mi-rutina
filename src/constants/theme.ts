@@ -24,3 +24,30 @@ export const theme = {
     section: 14,
   },
 } as const;
+
+export const categoryColors: Record<string, string> = {
+  'Piernas': '#B388FF',
+  'Cardio': '#40C4FF',
+  'Tren Superior': '#00E676',
+  'Full Body': '#FF9100',
+  'Movilidad': '#FFD740',
+  'Personalizada': '#C6FF00',
+};
+
+export const categoryIcons: Record<string, string> = {
+  'Piernas': '🟣',
+  'Cardio': '🔵',
+  'Tren Superior': '🟢',
+  'Full Body': '🟠',
+  'Movilidad': '🟡',
+  'Personalizada': '⚡',
+};
+
+export const CATEGORIES = [
+  'Piernas',
+  'Cardio',
+  'Tren Superior',
+  'Full Body',
+  'Movilidad',
+  'Personalizada',
+] as const;

@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Routine, AppSettings, WorkoutSession, ProgressData } from '../types';
+import { Routine, AppSettings, WorkoutSession, ProgressData, ExerciseLog, ExerciseLogEntry } from '../types';
 import { defaultRoutine } from '../data/routineData';
 
 const SETTINGS_KEY = 'mi_rutina_settings';
@@ -66,6 +66,18 @@ export async function addOrUpdateRoutine(routine: Routine): Promise<void> {
   const all = await loadAllRoutines();
   all[routine.id] = routine;
   await saveAllRoutines(all);
+}
+
+export async function deleteRoutine(id: string): Promise<Record<string, Routine>> {
+  const all = await loadAllRoutines();
+  delete all[id];
+  await saveAllRoutines(all);
+  const activeId = await loadActiveRoutineId();
+  if (activeId === id) {
+    const firstId = Object.keys(all)[0];
+    if (firstId) await saveActiveRoutineId(firstId);
+  }
+  return all;
 }
 
 export async function loadActiveRoutine(): Promise<Routine> {
@@ -224,6 +236,61 @@ export async function updateWeightForExercise(exerciseName: string, weight: stri
   const history = await loadWeightHistory();
   history[exerciseName.toLowerCase().trim()] = weight;
   await saveWeightHistory(history);
+}
+
+// ─── Exercise Log (historial por ejercicio) ───────────────────────
+
+const EXERCISE_LOG_KEY = 'mi_rutina_exercise_log';
+const MAX_LOG_ENTRIES = 20;
+
+export async function loadExerciseLog(): Promise<ExerciseLog> {
+  try {
+    const raw = await AsyncStorage.getItem(EXERCISE_LOG_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch { return {}; }
+}
+
+export async function saveExerciseLog(log: ExerciseLog): Promise<void> {
+  await AsyncStorage.setItem(EXERCISE_LOG_KEY, JSON.stringify(log));
+}
+
+function parseWeightKg(weight: string): number {
+  const n = parseFloat(weight.replace(',', '.'));
+  return isNaN(n) ? 0 : n;
+}
+
+export function getMaxWeight(entries: ExerciseLogEntry[]): number {
+  return entries.reduce((max, e) => Math.max(max, parseWeightKg(e.weight)), 0);
+}
+
+/**
+ * Registra las entradas de la sesión completada en el log por ejercicio
+ * y devuelve los nombres de ejercicios con nuevo récord personal de peso.
+ */
+export async function logCompletedWorkout(routine: Routine, date: string): Promise<string[]> {
+  const log = await loadExerciseLog();
+  const newRecords: string[] = [];
+
+  routine.sections.forEach((section) => {
+    section.exercises.forEach((ex) => {
+      const key = ex.name.toLowerCase().trim();
+      const prev = log[key] ?? [];
+      const weightKg = ex.weight ? parseWeightKg(ex.weight) : 0;
+      if (weightKg > 0 && prev.length > 0 && weightKg > getMaxWeight(prev)) {
+        newRecords.push(ex.name);
+      }
+      const entry: ExerciseLogEntry = {
+        date,
+        weight: ex.weight ?? '',
+        series: ex.series,
+        reps: ex.reps,
+      };
+      log[key] = [entry, ...prev].slice(0, MAX_LOG_ENTRIES);
+    });
+  });
+
+  await saveExerciseLog(log);
+  return newRecords;
 }
 
 // ─── Session Start Time ───────────────────────────────────────────

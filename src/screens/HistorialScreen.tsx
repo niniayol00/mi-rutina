@@ -4,8 +4,8 @@ import {
 } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { theme } from '../constants/theme';
-import { loadSessions, loadProgress, loadWeightHistory } from '../utils/storage';
-import { WorkoutSession, ProgressData } from '../types';
+import { loadSessions, loadProgress, loadWeightHistory, loadExerciseLog, getMaxWeight } from '../utils/storage';
+import { WorkoutSession, ProgressData, ExerciseLog } from '../types';
 
 const MONTHS = [
   'ene', 'feb', 'mar', 'abr', 'may', 'jun',
@@ -28,17 +28,20 @@ export default function HistorialScreen() {
   const [sessions, setSessions] = useState<WorkoutSession[]>([]);
   const [progress, setProgress] = useState<ProgressData | null>(null);
   const [weightHistory, setWeightHistory] = useState<Record<string, string>>({});
+  const [exerciseLog, setExerciseLog] = useState<ExerciseLog>({});
+  const [expanded, setExpanded] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<'sesiones' | 'pesos'>('sesiones');
+  const [tab, setTab] = useState<'sesiones' | 'ejercicios' | 'pesos'>('sesiones');
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [s, p, w] = await Promise.all([
-      loadSessions(), loadProgress(), loadWeightHistory(),
+    const [s, p, w, log] = await Promise.all([
+      loadSessions(), loadProgress(), loadWeightHistory(), loadExerciseLog(),
     ]);
     setSessions(s);
     setProgress(p);
     setWeightHistory(w);
+    setExerciseLog(log);
     setLoading(false);
   }, []);
 
@@ -53,6 +56,7 @@ export default function HistorialScreen() {
   }
 
   const weightEntries = Object.entries(weightHistory).sort(([a], [b]) => a.localeCompare(b));
+  const logEntries = Object.entries(exerciseLog).sort(([a], [b]) => a.localeCompare(b));
 
   return (
     <View style={styles.container}>
@@ -84,6 +88,14 @@ export default function HistorialScreen() {
         >
           <Text style={[styles.tabText, tab === 'sesiones' && styles.tabTextActive]}>
             Sesiones
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, tab === 'ejercicios' && styles.tabActive]}
+          onPress={() => setTab('ejercicios')}
+        >
+          <Text style={[styles.tabText, tab === 'ejercicios' && styles.tabTextActive]}>
+            Ejercicios
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -127,6 +139,48 @@ export default function HistorialScreen() {
                 </View>
               </View>
             ))
+          )
+        ) : tab === 'ejercicios' ? (
+          logEntries.length === 0 ? (
+            <View style={styles.empty}>
+              <Text style={styles.emptyIcon}>📈</Text>
+              <Text style={styles.emptyText}>Todavía no hay historial por ejercicio.</Text>
+              <Text style={styles.emptySubText}>Completá una rutina y acá vas a ver la evolución de cada ejercicio.</Text>
+            </View>
+          ) : (
+            logEntries.map(([name, entries]) => {
+              const maxW = getMaxWeight(entries);
+              const isOpen = expanded === name;
+              return (
+                <TouchableOpacity
+                  key={name}
+                  style={styles.logCard}
+                  onPress={() => setExpanded(isOpen ? null : name)}
+                >
+                  <View style={styles.logHeader}>
+                    <Text style={styles.logName} numberOfLines={1}>
+                      {name.charAt(0).toUpperCase() + name.slice(1)}
+                    </Text>
+                    <View style={styles.logHeaderRight}>
+                      {maxW > 0 && <Text style={styles.logRecord}>🏆 {maxW} kg</Text>}
+                      <Text style={styles.logArrow}>{isOpen ? '▲' : '▼'}</Text>
+                    </View>
+                  </View>
+                  {isOpen && (
+                    <View style={styles.logEntries}>
+                      {entries.slice(0, 5).map((e, i) => (
+                        <View key={i} style={styles.logEntryRow}>
+                          <Text style={styles.logEntryDate}>{formatDate(e.date)}</Text>
+                          <Text style={styles.logEntryDetail}>
+                            {e.series}x{e.reps}{e.weight ? `  ·  ${e.weight}` : ''}
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })
           )
         ) : (
           weightEntries.length === 0 ? (
@@ -229,6 +283,32 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
   },
   weightValue: { color: theme.timerColor, fontSize: 14, fontWeight: '800' },
+
+  logCard: {
+    backgroundColor: theme.cardBackground,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: theme.borderColor,
+  },
+  logHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  logName: { color: theme.textColor, fontSize: 14, fontWeight: '600', flex: 1, marginRight: 12 },
+  logHeaderRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  logRecord: { color: theme.warning, fontSize: 12, fontWeight: '800' },
+  logArrow: { color: theme.textMuted, fontSize: 10 },
+  logEntries: { marginTop: 12, gap: 6 },
+  logEntryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    backgroundColor: theme.backgroundColor,
+    borderRadius: 8,
+  },
+  logEntryDate: { color: theme.textMuted, fontSize: 12 },
+  logEntryDetail: { color: theme.timerColor, fontSize: 12, fontWeight: '700' },
 
   empty: { alignItems: 'center', paddingTop: 60, gap: 10 },
   emptyIcon: { fontSize: 40 },

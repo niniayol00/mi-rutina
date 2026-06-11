@@ -1,9 +1,20 @@
+export type RoutineCategory =
+  | 'Piernas'
+  | 'Cardio'
+  | 'Tren Superior'
+  | 'Full Body'
+  | 'Movilidad'
+  | 'Personalizada';
+
 export interface Routine {
   id: string;
   name: string;
   frequency: string;
   startDate: string;
   renewDate: string;
+  category?: RoutineCategory;
+  timesCompleted?: number;
+  lastRunDate?: string;
   sections: Section[];
 }
 
@@ -53,3 +64,12 @@ export interface ProgressData {
   totalMinutes: number;
   lastWorkoutDate: string | null;
 }
+
+export interface ExerciseLogEntry {
+  date: string;
+  weight: string;
+  series: number;
+  reps: string;
+}
+
+export type ExerciseLog = Record<string, ExerciseLogEntry[]>;

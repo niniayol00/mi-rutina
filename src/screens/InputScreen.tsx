@@ -11,15 +11,16 @@ import {
   Platform,
 } from 'react-native';
 import { router } from 'expo-router';
-import { theme } from '../constants/theme';
+import { theme, categoryColors, categoryIcons, CATEGORIES } from '../constants/theme';
 import { parseRoutineText } from '../utils/parser';
 import { loadAllRoutines, saveAllRoutines, saveActiveRoutineId } from '../utils/storage';
-import { Section, Exercise } from '../types';
+import { Section, RoutineCategory } from '../types';
 
 export default function InputScreen() {
   const [text, setText] = useState('');
   const [preview, setPreview] = useState<Section[] | null>(null);
-  const [routineName, setRoutineName] = useState('Mi Rutina');
+  const [routineName, setRoutineName] = useState('');
+  const [category, setCategory] = useState<RoutineCategory>('Personalizada');
   const [step, setStep] = useState<'input' | 'preview'>('input');
 
   const handleParse = () => {
@@ -37,10 +38,12 @@ export default function InputScreen() {
     const newId = `rutina_${Date.now()}`;
     const newRoutine = {
       id: newId,
-      name: routineName,
+      name: routineName.trim() || 'Mi Rutina',
       frequency: '',
       startDate: new Date().toISOString().split('T')[0],
       renewDate: '',
+      category,
+      timesCompleted: 0,
       sections: preview,
     };
     const all = await loadAllRoutines();
@@ -113,12 +116,43 @@ export default function InputScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Text style={styles.backText}>← Volver</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>Pegar rutina</Text>
+        <Text style={styles.title}>Nueva Rutina</Text>
         <View style={{ width: 70 }} />
       </View>
 
+      <TextInput
+        style={styles.nameInputTop}
+        value={routineName}
+        onChangeText={setRoutineName}
+        placeholder="Nombre de la rutina (ej: Piernas lunes)"
+        placeholderTextColor={theme.textMuted}
+      />
+
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.categoryScroll}
+        contentContainerStyle={styles.categoryContent}
+      >
+        {CATEGORIES.map((cat) => {
+          const selected = category === cat;
+          const color = categoryColors[cat];
+          return (
+            <TouchableOpacity
+              key={cat}
+              style={[styles.categoryChip, selected && { borderColor: color, backgroundColor: `${color}22` }]}
+              onPress={() => setCategory(cat as RoutineCategory)}
+            >
+              <Text style={[styles.categoryChipText, selected && { color }]}>
+                {categoryIcons[cat]} {cat}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+
       <Text style={styles.description}>
-        Pegá tu rutina completa. La app detectará ejercicios, series, repeticiones y pausas automáticamente.
+        Pegá la rutina que te envió tu entrenador. La app detectará ejercicios, series, repeticiones y pausas automáticamente.
       </Text>
 
       <TextInput
@@ -134,11 +168,11 @@ export default function InputScreen() {
       />
 
       <TouchableOpacity
-        style={[styles.parseBtn, !text.trim() && styles.parseBtnDisabled]}
+        style={[styles.parseBtn, (!text.trim() || !routineName.trim()) && styles.parseBtnDisabled]}
         onPress={handleParse}
-        disabled={!text.trim()}
+        disabled={!text.trim() || !routineName.trim()}
       >
-        <Text style={styles.parseBtnText}>GENERAR RUTINA</Text>
+        <Text style={styles.parseBtnText}>CREAR RUTINA</Text>
       </TouchableOpacity>
     </KeyboardAvoidingView>
   );
@@ -206,6 +240,28 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 1,
   },
+  nameInputTop: {
+    marginHorizontal: 16,
+    marginBottom: 10,
+    backgroundColor: theme.cardBackground,
+    borderRadius: 10,
+    padding: 12,
+    color: theme.textColor,
+    fontSize: 16,
+    fontWeight: '600',
+    borderWidth: 1,
+    borderColor: theme.borderColor,
+  },
+  categoryScroll: { maxHeight: 40, marginBottom: 10 },
+  categoryContent: { paddingHorizontal: 16, gap: 8, alignItems: 'center' },
+  categoryChip: {
+    borderWidth: 1,
+    borderColor: theme.borderColor,
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  categoryChipText: { color: theme.textMuted, fontSize: 12, fontWeight: '600' },
   nameInput: {
     marginHorizontal: 16,
     marginBottom: 8,

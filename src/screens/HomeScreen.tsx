@@ -11,7 +11,7 @@ import {
   checkAndResetIfNewDay, loadTrainingDates, saveTrainingDate,
   loadProgress, saveProgress, saveSession, resetAllSeries,
   loadWeightHistory, updateWeightForExercise, shouldShowWelcomeToday, calcStreak,
-  loadSessionStart, saveSessionStart, clearSessionStart,
+  loadSessionStart, saveSessionStart, clearSessionStart, logCompletedWorkout,
 } from '../utils/storage';
 import { theme } from '../constants/theme';
 import TimerModal from '../components/TimerModal';
@@ -47,6 +47,7 @@ export default function HomeScreen() {
   const [arrivalTime, setArrivalTime] = useState<string | null>(null);
   const [departureTime, setDepartureTime] = useState<string | null>(null);
   const [workoutDuration, setWorkoutDuration] = useState<string>('');
+  const [newRecords, setNewRecords] = useState<string[]>([]);
 
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const completedShown = useRef(false);
@@ -172,6 +173,20 @@ export default function HomeScreen() {
     });
     const updatedDates = await saveTrainingDate(today);
     setTrainingDates(updatedDates);
+
+    // Historial por ejercicio + récords personales
+    const records = await logCompletedWorkout(updated, today);
+    setNewRecords(records);
+
+    // Actualizar estadísticas de la rutina (veces completada, última ejecución)
+    if (saveTimeout.current) { clearTimeout(saveTimeout.current); saveTimeout.current = null; }
+    const withStats: Routine = {
+      ...updated,
+      timesCompleted: (updated.timesCompleted ?? 0) + 1,
+      lastRunDate: today,
+    };
+    setAllRoutines((prev) => ({ ...prev, [withStats.id]: withStats }));
+    await saveActiveRoutine(withStats);
 
     // Registrar hora de salida y calcular duración
     const depH = String(endTime.getHours()).padStart(2, '0');
@@ -605,6 +620,7 @@ export default function HomeScreen() {
         visible={completionVisible}
         userName="Yol"
         duration={workoutDuration}
+        records={newRecords}
         onViewCalendar={handleViewCalendar}
       />
 

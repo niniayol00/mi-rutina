@@ -1,11 +1,11 @@
 import { SafeAreaView, StyleSheet } from 'react-native';
-import HomeScreen from '../src/screens/HomeScreen';
-import { theme } from '../src/constants/theme';
+import PerfilScreen from '../../src/screens/PerfilScreen';
+import { theme } from '../../src/constants/theme';
 
-export default function Index() {
+export default function Perfil() {
   return (
     <SafeAreaView style={styles.safe}>
-      <HomeScreen />
+      <PerfilScreen />
     </SafeAreaView>
   );
 }

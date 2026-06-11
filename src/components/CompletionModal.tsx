@@ -6,10 +6,11 @@ interface CompletionModalProps {
   visible: boolean;
   userName: string;
   duration: string;
+  records?: string[];
   onViewCalendar: () => void;
 }
 
-export default function CompletionModal({ visible, userName, duration, onViewCalendar }: CompletionModalProps) {
+export default function CompletionModal({ visible, userName, duration, records, onViewCalendar }: CompletionModalProps) {
   const opacity = useRef(new Animated.Value(0)).current;
   const scale = useRef(new Animated.Value(0.8)).current;
 
@@ -35,6 +36,15 @@ export default function CompletionModal({ visible, userName, duration, onViewCal
             <Text style={styles.duration}>
               Hoy terminaste la rutina en: {duration}
             </Text>
+          )}
+          {records && records.length > 0 && (
+            <View style={styles.recordsBox}>
+              {records.map((name) => (
+                <Text key={name} style={styles.recordText}>
+                  🏆 Nuevo récord personal: {name}
+                </Text>
+              ))}
+            </View>
           )}
           <TouchableOpacity style={styles.btn} onPress={onViewCalendar}>
             <Text style={styles.btnText}>VER CALENDARIO</Text>
@@ -80,6 +90,18 @@ const styles = StyleSheet.create({
     color: theme.textMuted,
     fontSize: 14,
     fontWeight: '500',
+    textAlign: 'center',
+  },
+  recordsBox: {
+    backgroundColor: 'rgba(255, 193, 7, 0.1)',
+    borderRadius: 12,
+    padding: 12,
+    gap: 6,
+  },
+  recordText: {
+    color: theme.warning,
+    fontSize: 13,
+    fontWeight: '700',
     textAlign: 'center',
   },
   btn: {
