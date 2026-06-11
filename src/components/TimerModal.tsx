@@ -9,10 +9,8 @@ import {
   Vibration,
   Platform,
 } from 'react-native';
-import Svg, { Circle } from 'react-native-svg';
+import Svg, { Line } from 'react-native-svg';
 import { theme } from '../constants/theme';
-
-const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 function playBeep(type: 'phase' | 'finish') {
   if (Platform.OS !== 'web') return;
@@ -66,6 +64,7 @@ export default function TimerModal({
 }: TimerModalProps) {
   const [phase, setPhase] = useState<Phase>(workSeconds ? 'work' : 'rest');
   const [remaining, setRemaining] = useState(workSeconds || seconds);
+  const [total, setTotal] = useState(workSeconds || seconds);
   const [done, setDone] = useState(false);
 
   const phaseRef = useRef<Phase>(workSeconds ? 'work' : 'rest');
@@ -76,7 +75,6 @@ export default function TimerModal({
   const vibrationRef = useRef(vibrationOnFinish);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pulseAnim = useRef(new Animated.Value(1)).current;
-  const progressAnim = useRef(new Animated.Value(0)).current;
 
   soundRef.current = soundOnFinish;
   vibrationRef.current = vibrationOnFinish;
@@ -96,21 +94,11 @@ export default function TimerModal({
     }
   };
 
-  const updateProgress = useCallback(() => {
-    const progress = remainingRef.current / totalSecondsRef.current;
-    Animated.timing(progressAnim, {
-      toValue: progress,
-      duration: 200,
-      useNativeDriver: true,
-    }).start();
-  }, [progressAnim]);
-
   const startInterval = useCallback(() => {
     stopInterval();
     intervalRef.current = setInterval(() => {
       remainingRef.current -= 1;
       setRemaining(remainingRef.current);
-      updateProgress();
 
       if (remainingRef.current <= 0) {
         stopInterval();
@@ -126,7 +114,7 @@ export default function TimerModal({
           totalSecondsRef.current = restSecondsRef.current;
           setPhase('rest');
           setRemaining(restSecondsRef.current);
-          progressAnim.setValue(1);
+          setTotal(restSecondsRef.current);
           startInterval();
         } else {
           // All done
@@ -140,7 +128,7 @@ export default function TimerModal({
         }
       }
     }, 1000);
-  }, [startPulse, updateProgress, progressAnim]);
+  }, [startPulse]);
 
   useEffect(() => {
     if (visible) {
@@ -152,14 +140,14 @@ export default function TimerModal({
       totalSecondsRef.current = startRemaining;
       setPhase(startPhase);
       setRemaining(startRemaining);
+      setTotal(startRemaining);
       setDone(false);
-      progressAnim.setValue(1);
       startInterval();
     } else {
       stopInterval();
     }
     return stopInterval;
-  }, [visible, progressAnim]);
+  }, [visible]);
 
   const addTime = (secs: number) => {
     if (done) return;
@@ -182,62 +170,49 @@ export default function TimerModal({
   };
 
   const isWork = phase === 'work';
-
-  const circleSize = 240;
-  const strokeWidth = 8;
-  const radius = (circleSize - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radius;
-
-  const strokeDashoffset = progressAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [circumference, 0],
-  });
-
   const timerColor = isWork ? theme.workColor : theme.timerColor;
+
+  // Anillo de barritas que se van completando con el tiempo transcurrido
+  const circleSize = 260;
+  const center = circleSize / 2;
+  const tickCount = 48;
+  const tickLength = 16;
+  const outerRadius = center - 4;
+  const innerRadius = outerRadius - tickLength;
+  const elapsedFraction = done ? 1 : Math.min(1, Math.max(0, 1 - remaining / total));
+  const filledTicks = Math.round(elapsedFraction * tickCount);
+
+  const ticks = Array.from({ length: tickCount }, (_, i) => {
+    const angle = (i / tickCount) * 2 * Math.PI - Math.PI / 2;
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+    return (
+      <Line
+        key={i}
+        x1={center + cos * innerRadius}
+        y1={center + sin * innerRadius}
+        x2={center + cos * outerRadius}
+        y2={center + sin * outerRadius}
+        stroke={i < filledTicks ? timerColor : 'rgba(255, 255, 255, 0.12)'}
+        strokeWidth={5}
+        strokeLinecap="round"
+      />
+    );
+  });
 
   return (
     <Modal visible={visible} transparent animationType="fade" statusBarTranslucent>
       <View style={styles.overlay}>
         <View style={[styles.card, isWork && styles.cardWork]}>
-
-          <Text style={[styles.label, isWork && styles.labelWork]}>
-            {isWork ? 'TRABAJO' : done ? '¡LISTO!' : 'DESCANSO'}
-          </Text>
-
-          {workSeconds ? (
-            <View style={styles.phaseIndicator}>
-              <View style={[styles.phaseDot, phase !== 'work' && styles.phaseDotDone]} />
-              <View style={styles.phaseLine} />
-              <View style={[styles.phaseDot, done && styles.phaseDotDone]} />
-            </View>
-          ) : null}
-
           <View style={styles.timerContainer}>
             <Svg width={circleSize} height={circleSize} style={styles.circleContainer}>
-              {/* Background circle */}
-              <Circle
-                cx={circleSize / 2}
-                cy={circleSize / 2}
-                r={radius}
-                stroke="rgba(57, 255, 20, 0.1)"
-                strokeWidth={strokeWidth}
-                fill="none"
-              />
-              {/* Progress circle */}
-              <AnimatedCircle
-                cx={circleSize / 2}
-                cy={circleSize / 2}
-                r={radius}
-                stroke={timerColor}
-                strokeWidth={strokeWidth}
-                fill="none"
-                strokeDasharray={circumference}
-                strokeDashoffset={strokeDashoffset}
-                strokeLinecap="round"
-                rotation="-90"
-                origin={`${circleSize / 2}, ${circleSize / 2}`}
-              />
+              {ticks}
             </Svg>
+
+            <Text style={[styles.label, isWork && styles.labelWork]}>
+              {isWork ? 'TRABAJO' : done ? '¡LISTO!' : 'DESCANSO'}
+            </Text>
+
             <Animated.Text
               style={[
                 styles.timer,
@@ -248,11 +223,11 @@ export default function TimerModal({
             >
               {done ? '0' : formatTime(remaining)}
             </Animated.Text>
-          </View>
 
-          <TouchableOpacity style={styles.skipBtn} onPress={onClose}>
-            <Text style={styles.skipText}>SALTAR</Text>
-          </TouchableOpacity>
+            <TouchableOpacity style={styles.skipBtn} onPress={onClose}>
+              <Text style={styles.skipText}>SALTAR</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     </Modal>
@@ -269,9 +244,8 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: theme.cardBackground,
     borderRadius: 24,
-    padding: 40,
+    padding: 28,
     alignItems: 'center',
-    width: '80%',
     borderWidth: 1,
     borderColor: theme.borderColor,
   },
@@ -282,43 +256,25 @@ const styles = StyleSheet.create({
     color: theme.textMuted,
     fontSize: 12,
     letterSpacing: 3,
-    marginBottom: 16,
+    marginBottom: 2,
     fontWeight: '700',
   },
   labelWork: {
     color: theme.workColor,
   },
-  phaseIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-    gap: 6,
-  },
-  phaseDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: theme.borderColor,
-  },
-  phaseDotDone: {
-    backgroundColor: theme.timerColor,
-  },
-  phaseLine: {
-    width: 30,
-    height: 2,
-    backgroundColor: theme.borderColor,
-  },
   timerContainer: {
-    position: 'relative',
+    width: 260,
+    height: 260,
     justifyContent: 'center',
     alignItems: 'center',
-    marginVertical: 20,
   },
   circleContainer: {
     position: 'absolute',
+    top: 0,
+    left: 0,
   },
   timer: {
-    fontSize: 72,
+    fontSize: 64,
     fontWeight: '700',
     color: theme.timerColor,
     fontVariant: ['tabular-nums'],
@@ -349,9 +305,9 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   skipBtn: {
-    marginTop: 24,
-    paddingVertical: 10,
-    paddingHorizontal: 40,
+    marginTop: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 24,
     borderRadius: 30,
     backgroundColor: theme.borderColor,
   },
