@@ -6,7 +6,7 @@ import { useFocusEffect, router } from 'expo-router';
 import { theme, categoryColors } from '../constants/theme';
 import { Routine, WorkoutSession } from '../types';
 import {
-  loadAllRoutines, loadActiveRoutineId, saveActiveRoutineId, loadSessions,
+  loadAllRoutines, loadActiveRoutineId, saveActiveRoutineId, loadSessions, loadSettings,
 } from '../utils/storage';
 
 const MONTHS = [
@@ -29,15 +29,17 @@ export default function TodayScreen() {
   const [routines, setRoutines] = useState<Routine[]>([]);
   const [activeId, setActiveId] = useState('');
   const [sessions, setSessions] = useState<WorkoutSession[]>([]);
+  const [userName, setUserName] = useState('');
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    const [all, id, sess] = await Promise.all([
-      loadAllRoutines(), loadActiveRoutineId(), loadSessions(),
+    const [all, id, sess, settings] = await Promise.all([
+      loadAllRoutines(), loadActiveRoutineId(), loadSessions(), loadSettings(),
     ]);
     setRoutines(Object.values(all));
     setActiveId(id);
     setSessions(sess);
+    setUserName(settings.userName ?? '');
     setLoading(false);
   }, []);
 
@@ -93,7 +95,9 @@ export default function TodayScreen() {
     <View style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
-          <Text style={styles.title}>Hoy</Text>
+          <Text style={styles.title}>
+            {userName.trim() ? `Hola, ${userName.trim()} 👋` : 'Hola 👋'}
+          </Text>
           <Text style={styles.date}>{dateLabel}</Text>
         </View>
 

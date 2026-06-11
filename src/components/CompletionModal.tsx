@@ -43,7 +43,9 @@ export default function CompletionModal({
     <Modal visible={visible} transparent animationType="none" statusBarTranslucent>
       <Animated.View style={[styles.overlay, { opacity }]}>
         <Animated.View style={[styles.card, { transform: [{ scale }] }]}>
-          <Text style={styles.title}>¡Excelente trabajo, {userName}! 🎉</Text>
+          <Text style={styles.title}>
+            {userName.trim() ? `¡Excelente trabajo, ${userName.trim()}! 🎉` : '¡Excelente trabajo! 🎉'}
+          </Text>
           <Text style={styles.subtitle}>RUTINA COMPLETADA</Text>
 
           <View style={styles.infoBox}>

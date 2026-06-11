@@ -7,7 +7,7 @@ import { useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { theme } from '../constants/theme';
 import { AppSettings } from '../types';
-import { loadSettings, saveSettings } from '../utils/storage';
+import { loadSettings, saveSettings, exportAllData, restoreAllData } from '../utils/storage';
 
 const APP_VERSION = '1.0.0';
 
@@ -54,27 +54,71 @@ export default function PerfilScreen() {
 
   const exportData = async () => {
     try {
-      const keys = await AsyncStorage.getAllKeys();
-      const pairs = await AsyncStorage.multiGet(keys);
-      const data: Record<string, unknown> = {};
-      pairs.forEach(([k, v]) => {
-        try { data[k] = v ? JSON.parse(v) : null; } catch { data[k] = v; }
-      });
-      const json = JSON.stringify(data, null, 2);
+      const data = await exportAllData();
+      const payload = {
+        app: 'mi-rutina',
+        schemaVersion: 1,
+        exportedAt: new Date().toISOString(),
+        data,
+      };
+      const json = JSON.stringify(payload, null, 2);
       if (Platform.OS === 'web') {
         const blob = new Blob([json], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `mi-rutina-datos-${new Date().toISOString().split('T')[0]}.json`;
+        a.download = 'mi-rutina-respaldo.json';
         a.click();
         URL.revokeObjectURL(url);
       } else {
-        Alert.alert('Exportar datos', 'La exportación está disponible en la versión web.');
+        Alert.alert('Exportar respaldo', 'La exportación está disponible en la versión web.');
       }
     } catch {
       if (Platform.OS === 'web') window.alert('No se pudieron exportar los datos.');
     }
+  };
+
+  const importData = () => {
+    if (Platform.OS !== 'web') {
+      Alert.alert('Importar respaldo', 'La importación está disponible en la versión web.');
+      return;
+    }
+    const ERR = 'No pudimos importar este archivo. Revisá que sea un respaldo válido de Mi Rutina.';
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'application/json,.json';
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const parsed = JSON.parse(text);
+        // Validar que sea un respaldo de Mi Rutina con rutinas adentro
+        const data = parsed && parsed.app === 'mi-rutina' && parsed.data ? parsed.data : null;
+        const valid = data && typeof data === 'object' && data['mi_rutina_all_v3'];
+        if (!valid) {
+          window.alert(ERR);
+          return;
+        }
+        if (!window.confirm('Esto reemplazará tus rutinas actuales. ¿Querés continuar?')) return;
+        await restoreAllData(data);
+        window.alert('Datos importados correctamente.');
+        window.location.reload();
+      } catch {
+        window.alert(ERR);
+      }
+    };
+    input.click();
+  };
+
+  const acercaDe = () => {
+    const msg =
+      'Mi Rutina — Tu libreta digital de entrenamiento.\n\n' +
+      'Convertí las rutinas de tu profe en una lista interactiva y seguí tu progreso. ' +
+      'Todos tus datos quedan guardados en este dispositivo, sin cuenta ni email.\n\n' +
+      `Versión ${APP_VERSION}`;
+    if (Platform.OS === 'web') window.alert(msg);
+    else Alert.alert('Acerca de', msg);
   };
 
   const clearData = () => {
@@ -171,14 +215,22 @@ export default function PerfilScreen() {
           />
         </View>
 
-        <Text style={styles.sectionTitle}>DATOS DE LA APP</Text>
+        <Text style={styles.sectionTitle}>RESPALDO</Text>
         <View style={styles.card}>
           <TouchableOpacity style={styles.row} onPress={exportData}>
             <View style={styles.rowTexts}>
-              <Text style={styles.rowLabel}>Exportar datos</Text>
-              <Text style={styles.rowDescription}>Descarga un respaldo de tus rutinas e historial</Text>
+              <Text style={styles.rowLabel}>Exportar respaldo</Text>
+              <Text style={styles.rowDescription}>Descarga un archivo con tus rutinas e historial</Text>
             </View>
             <Text style={styles.rowAction}>↓</Text>
+          </TouchableOpacity>
+          <View style={styles.separator} />
+          <TouchableOpacity style={styles.row} onPress={importData}>
+            <View style={styles.rowTexts}>
+              <Text style={styles.rowLabel}>Importar respaldo</Text>
+              <Text style={styles.rowDescription}>Reemplaza tus datos actuales con un respaldo</Text>
+            </View>
+            <Text style={styles.rowAction}>↑</Text>
           </TouchableOpacity>
           <View style={styles.separator} />
           <TouchableOpacity style={styles.row} onPress={clearData}>
@@ -186,6 +238,17 @@ export default function PerfilScreen() {
               <Text style={[styles.rowLabel, { color: theme.danger }]}>Borrar datos</Text>
               <Text style={styles.rowDescription}>Elimina todo y empieza de cero</Text>
             </View>
+          </TouchableOpacity>
+        </View>
+
+        <Text style={styles.sectionTitle}>INFORMACIÓN</Text>
+        <View style={styles.card}>
+          <TouchableOpacity style={styles.row} onPress={acercaDe}>
+            <View style={styles.rowTexts}>
+              <Text style={styles.rowLabel}>Acerca de</Text>
+              <Text style={styles.rowDescription}>Qué es Mi Rutina</Text>
+            </View>
+            <Text style={styles.rowAction}>›</Text>
           </TouchableOpacity>
           <View style={styles.separator} />
           <View style={styles.row}>

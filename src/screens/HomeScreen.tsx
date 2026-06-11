@@ -619,7 +619,7 @@ export default function HomeScreen() {
 
       <CompletionModal
         visible={completionVisible}
-        userName={settings.userName || 'Yol'}
+        userName={settings.userName || ''}
         routineName={routine.name}
         exercisesDone={completedExercises}
         exercisesTotal={exTotal}

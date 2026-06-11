@@ -10,9 +10,10 @@ const ALL_ROUTINES_KEY = 'mi_rutina_all_v3';
 const ACTIVE_ID_KEY = 'mi_rutina_active_id';
 const WELCOME_DATE_KEY = 'mi_rutina_welcome_date';
 const SESSION_START_KEY = 'mi_rutina_session_start';
+const ONBOARDED_KEY = 'mi_rutina_onboarded';
 
 export const defaultSettings: AppSettings = {
-  userName: 'Yol',
+  userName: '',
   autoStartTimerOnCheck: true,
   dailyResetSeries: true,
   voiceInputEnabled: true,
@@ -292,6 +293,60 @@ export async function logCompletedWorkout(routine: Routine, date: string): Promi
 
   await saveExerciseLog(log);
   return newRecords;
+}
+
+// ─── Onboarding ───────────────────────────────────────────────────
+
+/**
+ * Devuelve true solo en el primer arranque (sin nombre guardado).
+ * A los usuarios existentes (que ya tienen nombre) los marca como
+ * onboardeados en silencio para no molestarlos.
+ */
+export async function needsOnboarding(): Promise<boolean> {
+  try {
+    const flag = await AsyncStorage.getItem(ONBOARDED_KEY);
+    if (flag === 'true') return false;
+    const rawSettings = await AsyncStorage.getItem(SETTINGS_KEY);
+    if (rawSettings) {
+      const s = JSON.parse(rawSettings);
+      if (s.userName && String(s.userName).trim()) {
+        await AsyncStorage.setItem(ONBOARDED_KEY, 'true');
+        return false;
+      }
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function completeOnboarding(name: string): Promise<void> {
+  const settings = await loadSettings();
+  await saveSettings({ ...settings, userName: name.trim() });
+  await AsyncStorage.setItem(ONBOARDED_KEY, 'true');
+}
+
+// ─── Respaldo (exportar / importar) ───────────────────────────────
+
+/** Junta todos los datos guardados en un objeto plano (clave → valor). */
+export async function exportAllData(): Promise<Record<string, unknown>> {
+  const keys = await AsyncStorage.getAllKeys();
+  const pairs = await AsyncStorage.multiGet(keys);
+  const data: Record<string, unknown> = {};
+  pairs.forEach(([k, v]) => {
+    try { data[k] = v ? JSON.parse(v) : null; } catch { data[k] = v; }
+  });
+  return data;
+}
+
+/** Reemplaza todos los datos actuales por los del respaldo. */
+export async function restoreAllData(data: Record<string, unknown>): Promise<void> {
+  await AsyncStorage.clear();
+  const entries: [string, string][] = Object.entries(data)
+    .filter(([, v]) => v !== null && v !== undefined)
+    .map(([k, v]) => [k, typeof v === 'string' ? v : JSON.stringify(v)]);
+  if (entries.length > 0) await AsyncStorage.multiSet(entries);
+  await AsyncStorage.setItem(ONBOARDED_KEY, 'true');
 }
 
 // ─── Session Start Time ───────────────────────────────────────────
