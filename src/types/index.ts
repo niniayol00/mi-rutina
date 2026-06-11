@@ -36,6 +36,7 @@ export interface Exercise {
 }
 
 export interface AppSettings {
+  userName?: string;
   autoStartTimerOnCheck: boolean;
   dailyResetSeries: boolean;
   voiceInputEnabled: boolean;
@@ -47,6 +48,14 @@ export interface AppSettings {
   lastResetDate: string;
 }
 
+export interface SessionExercise {
+  name: string;
+  series: number;
+  reps: string;
+  weight?: string;
+  notes?: string;
+}
+
 export interface WorkoutSession {
   date: string;
   startTime: string;
@@ -55,6 +64,7 @@ export interface WorkoutSession {
   totalSeries: number;
   totalWeight: number;
   routineName: string;
+  exercises?: SessionExercise[];
 }
 
 export interface ProgressData {

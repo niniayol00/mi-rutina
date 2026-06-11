@@ -1,11 +1,11 @@
 import { SafeAreaView, StyleSheet } from 'react-native';
-import TodayScreen from '../../src/screens/TodayScreen';
-import { theme } from '../../src/constants/theme';
+import HomeScreen from '../src/screens/HomeScreen';
+import { theme } from '../src/constants/theme';
 
-export default function Index() {
+export default function Rutina() {
   return (
     <SafeAreaView style={styles.safe}>
-      <TodayScreen />
+      <HomeScreen />
     </SafeAreaView>
   );
 }

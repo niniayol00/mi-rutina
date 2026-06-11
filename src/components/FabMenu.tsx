@@ -8,10 +8,10 @@ interface FabMenuProps {
   onAddExercise: () => void;
   onNewRoutine: () => void;
   onDuplicateRoutine: () => void;
-  onHistorial: () => void;
+  onCalendar: () => void;
 }
 
-export default function FabMenu({ visible, onClose, onAddExercise, onNewRoutine, onDuplicateRoutine, onHistorial }: FabMenuProps) {
+export default function FabMenu({ visible, onClose, onAddExercise, onNewRoutine, onDuplicateRoutine, onCalendar }: FabMenuProps) {
   const handleOption = (fn: () => void) => { onClose(); fn(); };
 
   return (
@@ -48,11 +48,11 @@ export default function FabMenu({ visible, onClose, onAddExercise, onNewRoutine,
 
           <View style={styles.divider} />
 
-          <TouchableOpacity style={styles.option} onPress={() => handleOption(onHistorial)}>
-            <Text style={styles.optionIcon}>📊</Text>
+          <TouchableOpacity style={styles.option} onPress={() => handleOption(onCalendar)}>
+            <Text style={styles.optionIcon}>📅</Text>
             <View>
-              <Text style={styles.optionLabel}>Ver historial</Text>
-              <Text style={styles.optionSub}>Sesiones y pesos por ejercicio</Text>
+              <Text style={styles.optionLabel}>Ver calendario</Text>
+              <Text style={styles.optionSub}>Tus días entrenados</Text>
             </View>
           </TouchableOpacity>
 

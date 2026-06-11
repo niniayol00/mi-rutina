@@ -4,8 +4,8 @@ import {
 } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { theme } from '../constants/theme';
-import { loadSessions, loadProgress, loadWeightHistory, loadExerciseLog, getMaxWeight } from '../utils/storage';
-import { WorkoutSession, ProgressData, ExerciseLog } from '../types';
+import { loadSessions, loadWeightHistory, loadExerciseLog, getMaxWeight } from '../utils/storage';
+import { WorkoutSession, ExerciseLog } from '../types';
 
 const MONTHS = [
   'ene', 'feb', 'mar', 'abr', 'may', 'jun',
@@ -17,29 +17,21 @@ function formatDate(dateStr: string): string {
   return `${d} ${MONTHS[parseInt(m) - 1]} ${y}`;
 }
 
-function formatDuration(minutes: number): string {
-  if (minutes < 60) return `${minutes} min`;
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  return m > 0 ? `${h}h ${m}min` : `${h}h`;
-}
-
 export default function HistorialScreen() {
   const [sessions, setSessions] = useState<WorkoutSession[]>([]);
-  const [progress, setProgress] = useState<ProgressData | null>(null);
   const [weightHistory, setWeightHistory] = useState<Record<string, string>>({});
   const [exerciseLog, setExerciseLog] = useState<ExerciseLog>({});
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [expandedSession, setExpandedSession] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<'sesiones' | 'ejercicios' | 'pesos'>('sesiones');
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [s, p, w, log] = await Promise.all([
-      loadSessions(), loadProgress(), loadWeightHistory(), loadExerciseLog(),
+    const [s, w, log] = await Promise.all([
+      loadSessions(), loadWeightHistory(), loadExerciseLog(),
     ]);
     setSessions(s);
-    setProgress(p);
     setWeightHistory(w);
     setExerciseLog(log);
     setLoading(false);
@@ -60,26 +52,6 @@ export default function HistorialScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Stats bar */}
-      {progress && (
-        <View style={styles.statsRow}>
-          <View style={styles.statBox}>
-            <Text style={styles.statValue}>{progress.totalWorkouts}</Text>
-            <Text style={styles.statLabel}>entrenos</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statBox}>
-            <Text style={styles.statValue}>{progress.totalMinutes}</Text>
-            <Text style={styles.statLabel}>minutos</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statBox}>
-            <Text style={styles.statValue}>{Math.round(progress.totalWeight)}</Text>
-            <Text style={styles.statLabel}>kg totales</Text>
-          </View>
-        </View>
-      )}
-
       {/* Tabs */}
       <View style={styles.tabRow}>
         <TouchableOpacity
@@ -121,24 +93,39 @@ export default function HistorialScreen() {
               <Text style={styles.emptySubText}>Completá una rutina para que aparezca acá.</Text>
             </View>
           ) : (
-            sessions.map((s, i) => (
-              <View key={i} style={styles.sessionCard}>
-                <View style={styles.sessionHeader}>
-                  <Text style={styles.sessionDate}>{formatDate(s.date)}</Text>
-                  <Text style={styles.sessionDuration}>{formatDuration(s.durationMinutes)}</Text>
-                </View>
-                <Text style={styles.sessionRoutine}>{s.routineName}</Text>
-                <View style={styles.sessionStats}>
-                  <Text style={styles.sessionStat}>{s.totalSeries} series</Text>
-                  {s.totalWeight > 0 && (
-                    <>
-                      <Text style={styles.sessionStatSep}>·</Text>
-                      <Text style={styles.sessionStat}>{Math.round(s.totalWeight)} kg</Text>
-                    </>
+            sessions.map((s, i) => {
+              const isOpen = expandedSession === i;
+              const hasDetail = s.exercises && s.exercises.length > 0;
+              return (
+                <TouchableOpacity
+                  key={i}
+                  style={styles.sessionCard}
+                  onPress={() => hasDetail && setExpandedSession(isOpen ? null : i)}
+                  activeOpacity={hasDetail ? 0.7 : 1}
+                >
+                  <View style={styles.sessionHeader}>
+                    <Text style={styles.sessionDate}>{formatDate(s.date)}</Text>
+                    <Text style={styles.sessionCompleted}>✓ Completada</Text>
+                  </View>
+                  <View style={styles.sessionHeader}>
+                    <Text style={styles.sessionRoutine}>{s.routineName}</Text>
+                    {hasDetail && <Text style={styles.sessionArrow}>{isOpen ? '▲' : '▼'}</Text>}
+                  </View>
+                  {isOpen && hasDetail && (
+                    <View style={styles.sessionDetail}>
+                      {s.exercises!.map((ex, j) => (
+                        <View key={j} style={styles.sessionExerciseRow}>
+                          <Text style={styles.sessionExerciseName} numberOfLines={1}>{ex.name}</Text>
+                          <Text style={styles.sessionExerciseDetail}>
+                            {ex.series}x{ex.reps}{ex.weight ? `  ·  ${ex.weight}` : ''}
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
                   )}
-                </View>
-              </View>
-            ))
+                </TouchableOpacity>
+              );
+            })
           )
         ) : tab === 'ejercicios' ? (
           logEntries.length === 0 ? (
@@ -212,25 +199,10 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.backgroundColor },
   center: { flex: 1, backgroundColor: theme.backgroundColor, justifyContent: 'center', alignItems: 'center' },
 
-  statsRow: {
-    flexDirection: 'row',
-    marginHorizontal: 20,
-    marginTop: 20,
-    marginBottom: 16,
-    backgroundColor: theme.cardBackground,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: theme.borderColor,
-    paddingVertical: 16,
-  },
-  statBox: { flex: 1, alignItems: 'center' },
-  statValue: { color: theme.timerColor, fontSize: 24, fontWeight: '800' },
-  statLabel: { color: theme.textMuted, fontSize: 10, letterSpacing: 1, marginTop: 2 },
-  statDivider: { width: 1, backgroundColor: theme.borderColor, marginVertical: 4 },
-
   tabRow: {
     flexDirection: 'row',
     marginHorizontal: 20,
+    marginTop: 16,
     marginBottom: 12,
     backgroundColor: theme.cardBackground,
     borderRadius: 12,
@@ -255,13 +227,22 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.borderColor,
   },
-  sessionHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
+  sessionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
   sessionDate: { color: theme.textColor, fontSize: 15, fontWeight: '700' },
-  sessionDuration: { color: theme.timerColor, fontSize: 14, fontWeight: '700' },
-  sessionRoutine: { color: theme.textMuted, fontSize: 12, marginBottom: 8 },
-  sessionStats: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  sessionStat: { color: theme.textMuted, fontSize: 12 },
-  sessionStatSep: { color: theme.borderColor, fontSize: 12, marginHorizontal: 2 },
+  sessionCompleted: { color: theme.success, fontSize: 12, fontWeight: '700' },
+  sessionRoutine: { color: theme.textMuted, fontSize: 12 },
+  sessionArrow: { color: theme.textMuted, fontSize: 10 },
+  sessionDetail: { marginTop: 12, gap: 6 },
+  sessionExerciseRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    backgroundColor: theme.backgroundColor,
+    borderRadius: 8,
+  },
+  sessionExerciseName: { color: theme.textColor, fontSize: 12, flex: 1, marginRight: 10 },
+  sessionExerciseDetail: { color: theme.timerColor, fontSize: 12, fontWeight: '700' },
 
   weightRow: {
     flexDirection: 'row',

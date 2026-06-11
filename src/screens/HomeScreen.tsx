@@ -1,16 +1,16 @@
 import React, { useCallback, useRef, useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  RefreshControl, TextInput, Animated,
+  RefreshControl, TextInput, Animated, Platform, Alert,
 } from 'react-native';
 import { useFocusEffect, router } from 'expo-router';
-import { Routine, AppSettings, Exercise, WorkoutSession } from '../types';
+import { Routine, AppSettings, Exercise, WorkoutSession, SessionExercise } from '../types';
 import {
   loadAllRoutines, saveAllRoutines, loadActiveRoutineId, saveActiveRoutineId,
   loadActiveRoutine, saveActiveRoutine, loadSettings, saveSettings,
   checkAndResetIfNewDay, loadTrainingDates, saveTrainingDate,
   loadProgress, saveProgress, saveSession, resetAllSeries,
-  loadWeightHistory, updateWeightForExercise, shouldShowWelcomeToday, calcStreak,
+  loadWeightHistory, updateWeightForExercise, shouldShowWelcomeToday,
   loadSessionStart, saveSessionStart, clearSessionStart, logCompletedWorkout,
 } from '../utils/storage';
 import { theme } from '../constants/theme';
@@ -48,6 +48,7 @@ export default function HomeScreen() {
   const [departureTime, setDepartureTime] = useState<string | null>(null);
   const [workoutDuration, setWorkoutDuration] = useState<string>('');
   const [newRecords, setNewRecords] = useState<string[]>([]);
+  const [completedExercises, setCompletedExercises] = useState(0);
 
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const completedShown = useRef(false);
@@ -137,30 +138,39 @@ export default function HomeScreen() {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   };
 
-  const checkAllCompleted = useCallback(async (updated: Routine) => {
+  const checkAllCompleted = useCallback(async (updated: Routine, force = false) => {
     if (completedShown.current) return;
     const allDone = updated.sections.every((s) =>
       s.exercises.every((ex) => ex.seriesCompleted.every(Boolean))
     );
-    if (!allDone) return;
+    if (!allDone && !force) return;
     completedShown.current = true;
 
     const endTime = new Date();
     const durationMinutes = Math.round((endTime.getTime() - sessionStart.getTime()) / 60000);
-    let totalSeries = 0, totalWeight = 0;
+    let totalSeries = 0, totalWeight = 0, exercisesDone = 0;
+    const sessionExercises: SessionExercise[] = [];
     updated.sections.forEach((s) => s.exercises.forEach((ex) => {
       totalSeries += ex.series;
       if (ex.weight) {
         const kg = parseFloat(ex.weight);
         if (!isNaN(kg)) totalWeight += kg * ex.series;
       }
+      if (ex.seriesCompleted.every(Boolean)) exercisesDone += 1;
+      if (ex.seriesCompleted.some(Boolean)) {
+        sessionExercises.push({
+          name: ex.name, series: ex.series, reps: ex.reps, weight: ex.weight,
+        });
+      }
     }));
+    setCompletedExercises(exercisesDone);
 
     const today = getToday();
     const session: WorkoutSession = {
       date: today, startTime: sessionStart.toISOString(),
       endTime: endTime.toISOString(), durationMinutes,
       totalSeries, totalWeight, routineName: updated.name,
+      exercises: sessionExercises,
     };
     await saveSession(session);
     const progress = await loadProgress();
@@ -206,7 +216,7 @@ export default function HomeScreen() {
 
   // ─── handleRoutineCompletion ─────────────────────────────────────
 
-  const handleViewCalendar = async () => {
+  const handleGoToRoutines = async () => {
     if (!routine) return;
     setCompletionVisible(false);
     if (saveTimeout.current) { clearTimeout(saveTimeout.current); saveTimeout.current = null; }
@@ -216,24 +226,27 @@ export default function HomeScreen() {
     await saveAllRoutines(newAll);
     await clearSessionStart();
     completedShown.current = false;
-    setCalendarVisible(true);
+    router.replace('/rutinas');
   };
 
-  const handleCloseCalendar = () => {
-    setCalendarVisible(false);
-    // Animación: fade out → cargar desde storage (fuente de verdad) → fade in
-    Animated.timing(listOpacity, {
-      toValue: 0, duration: 250, useNativeDriver: true,
-    }).start(async () => {
-      const freshAll = await loadAllRoutines();
-      setAllRoutines(freshAll);
-      setArrivalTime(null);
-      setDepartureTime(null);
-      setWorkoutDuration('');
-      Animated.timing(listOpacity, {
-        toValue: 1, duration: 350, useNativeDriver: true,
-      }).start();
-    });
+  const finalizarRutina = () => {
+    if (!routine || completedShown.current) return;
+    const allDone = routine.sections.every((s) =>
+      s.exercises.every((ex) => ex.seriesCompleted.every(Boolean))
+    );
+    if (allDone) {
+      checkAllCompleted(routine);
+      return;
+    }
+    const msg = 'Te quedan series sin marcar. ¿Finalizar la rutina igual?';
+    if (Platform.OS === 'web') {
+      if (window.confirm(msg)) checkAllCompleted(routine, true);
+    } else {
+      Alert.alert('Finalizar rutina', msg, [
+        { text: 'Seguir entrenando', style: 'cancel' },
+        { text: 'Finalizar', onPress: () => checkAllCompleted(routine, true) },
+      ]);
+    }
   };
 
   const duplicateRoutine = async () => {
@@ -409,11 +422,6 @@ export default function HomeScreen() {
     updateAllRoutines({ ...routine, name: newName });
   };
 
-  const switchRoutine = async (id: string) => {
-    setActiveId(id);
-    await saveActiveRoutineId(id);
-  };
-
   const limpiarTildes = async () => {
     if (!routine) return;
     const clean = resetAllSeries(routine);
@@ -447,16 +455,18 @@ export default function HomeScreen() {
 
   // ─── Progress ────────────────────────────────────────────────────
 
-  const { done, total } = (() => {
-    if (!routine) return { done: 0, total: 0 };
-    let done = 0, total = 0;
+  const { done, total, exDone, exTotal } = (() => {
+    if (!routine) return { done: 0, total: 0, exDone: 0, exTotal: 0 };
+    let done = 0, total = 0, exDone = 0, exTotal = 0;
     routine.sections.forEach((s) =>
       s.exercises.forEach((ex) => {
         total += ex.seriesCompleted.length;
         done += ex.seriesCompleted.filter(Boolean).length;
+        exTotal += 1;
+        if (ex.seriesCompleted.length > 0 && ex.seriesCompleted.every(Boolean)) exDone += 1;
       })
     );
-    return { done, total };
+    return { done, total, exDone, exTotal };
   })();
 
   // ─── Render ──────────────────────────────────────────────────────
@@ -469,12 +479,13 @@ export default function HomeScreen() {
     );
   }
 
-  const routineList = Object.values(allRoutines);
-
   return (
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+          <Text style={styles.backBtnText}>←</Text>
+        </TouchableOpacity>
         <View style={{ flex: 1 }}>
           {editingTitle ? (
             <TextInput
@@ -504,9 +515,6 @@ export default function HomeScreen() {
               <Text style={styles.subtitle}>{routine.frequency || 'Tocar para agregar frecuencia'}</Text>
             </TouchableOpacity>
           )}
-          {calcStreak(trainingDates) > 1 && (
-            <Text style={styles.streak}>🔥 {calcStreak(trainingDates)} días seguidos</Text>
-          )}
           {arrivalTime && (
             <Text style={styles.timeInfo}>
               Entrada {arrivalTime}{departureTime ? `  ·  Salida ${departureTime}` : ''}
@@ -517,27 +525,10 @@ export default function HomeScreen() {
           <Text style={styles.headerFabText}>+</Text>
         </TouchableOpacity>
         <View style={styles.progressBadge}>
-          <Text style={styles.progressText}>{done}/{total}</Text>
-          <Text style={styles.progressLabel}>series</Text>
+          <Text style={styles.progressText}>{exDone}/{exTotal}</Text>
+          <Text style={styles.progressLabel}>ejercicios</Text>
         </View>
       </View>
-
-      {/* Routine switcher */}
-      {routineList.length > 1 && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.switcherScroll} contentContainerStyle={styles.switcherContent}>
-          {routineList.map((r) => (
-            <TouchableOpacity
-              key={r.id}
-              style={[styles.switcherTab, r.id === activeId && styles.switcherTabActive]}
-              onPress={() => switchRoutine(r.id)}
-            >
-              <Text style={[styles.switcherText, r.id === activeId && styles.switcherTextActive]}>
-                {r.name}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      )}
 
       {/* Progress bar */}
       {total > 0 && (
@@ -575,6 +566,12 @@ export default function HomeScreen() {
         ))}
 
         {done > 0 && done < total && (
+          <TouchableOpacity style={styles.finishBar} onPress={finalizarRutina}>
+            <Text style={styles.finishBarText}>FINALIZAR RUTINA</Text>
+          </TouchableOpacity>
+        )}
+
+        {done > 0 && done < total && (
           <TouchableOpacity style={styles.clearBar} onPress={limpiarTildes}>
             <Text style={styles.clearBarText}>Borrar todos los tildes</Text>
           </TouchableOpacity>
@@ -597,7 +594,7 @@ export default function HomeScreen() {
       <CalendarModal
         visible={calendarVisible}
         trainingDates={trainingDates}
-        onClose={handleCloseCalendar}
+        onClose={() => setCalendarVisible(false)}
       />
 
       <AddExerciseModal
@@ -613,15 +610,17 @@ export default function HomeScreen() {
         onAddExercise={() => setAddVisible(true)}
         onNewRoutine={() => router.push('/input')}
         onDuplicateRoutine={duplicateRoutine}
-        onHistorial={() => router.push('/historial')}
+        onCalendar={() => setCalendarVisible(true)}
       />
 
       <CompletionModal
         visible={completionVisible}
-        userName="Yol"
-        duration={workoutDuration}
+        userName={settings.userName || 'Yol'}
+        routineName={routine.name}
+        exercisesDone={completedExercises}
+        exercisesTotal={exTotal}
         records={newRecords}
-        onViewCalendar={handleViewCalendar}
+        onGoToRoutines={handleGoToRoutines}
       />
 
       {showWelcome && !loading && (
@@ -652,8 +651,25 @@ const styles = StyleSheet.create({
     color: theme.textMuted, fontSize: theme.fontSize.small, marginTop: 2,
     borderBottomWidth: 1, borderBottomColor: theme.timerColor, paddingVertical: 1, minWidth: 120,
   },
-  streak: { color: theme.warning, fontSize: 11, marginTop: 2, fontWeight: '700' },
   timeInfo: { color: theme.timerColor, fontSize: 11, marginTop: 3, fontWeight: '600' },
+  backBtn: {
+    width: 36, height: 36, borderRadius: 18,
+    justifyContent: 'center', alignItems: 'center',
+    marginRight: 8, marginTop: 2,
+    backgroundColor: theme.cardBackground,
+    borderWidth: 1, borderColor: theme.borderColor,
+  },
+  backBtnText: { color: theme.textColor, fontSize: 18, lineHeight: 22 },
+  finishBar: {
+    backgroundColor: theme.timerColor,
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    marginHorizontal: 16,
+    marginTop: 8,
+  },
+  finishBarText: { color: '#000', fontSize: 14, fontWeight: '800', letterSpacing: 1 },
   clearBar: {
     backgroundColor: theme.cardBackground,
     borderWidth: 1,

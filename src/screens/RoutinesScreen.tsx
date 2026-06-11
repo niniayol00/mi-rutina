@@ -59,15 +59,10 @@ export default function RoutinesScreen() {
     return match ? match.date : null;
   };
 
-  const timesCompleted = (r: Routine): number => {
-    const fromSessions = sessions.filter((s) => s.routineName === r.name).length;
-    return Math.max(r.timesCompleted ?? 0, fromSessions);
-  };
-
   const selectRoutine = async (id: string) => {
     await saveActiveRoutineId(id);
     setActiveId(id);
-    router.push('/');
+    router.push('/rutina');
   };
 
   const handleDelete = (r: Routine) => {
@@ -119,7 +114,6 @@ export default function RoutinesScreen() {
           const cat = r.category ?? 'Personalizada';
           const color = categoryColors[cat];
           const last = lastRun(r);
-          const completed = timesCompleted(r);
           const isActive = r.id === activeId;
           return (
             <TouchableOpacity
@@ -152,9 +146,6 @@ export default function RoutinesScreen() {
                       {categoryIcons[cat]} <Text style={{ color }}>{cat}</Text>
                     </Text>
                   </TouchableOpacity>
-                  {completed > 0 && (
-                    <Text style={styles.completedText}>✓ {completed} completada{completed !== 1 ? 's' : ''}</Text>
-                  )}
                 </View>
               </View>
             </TouchableOpacity>

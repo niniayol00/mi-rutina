@@ -12,6 +12,7 @@ const WELCOME_DATE_KEY = 'mi_rutina_welcome_date';
 const SESSION_START_KEY = 'mi_rutina_session_start';
 
 export const defaultSettings: AppSettings = {
+  userName: 'Yol',
   autoStartTimerOnCheck: true,
   dailyResetSeries: true,
   voiceInputEnabled: true,

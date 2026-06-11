@@ -124,7 +124,7 @@ export default function InputScreen() {
         style={styles.nameInputTop}
         value={routineName}
         onChangeText={setRoutineName}
-        placeholder="Nombre de la rutina (ej: Piernas lunes)"
+        placeholder="Nombre de la rutina (Ej: Piernas)"
         placeholderTextColor={theme.textMuted}
       />
 
@@ -152,7 +152,7 @@ export default function InputScreen() {
       </ScrollView>
 
       <Text style={styles.description}>
-        Pegá la rutina que te envió tu entrenador. La app detectará ejercicios, series, repeticiones y pausas automáticamente.
+        Pegá acá la rutina que te envió tu profe. La app detectará ejercicios, series, repeticiones y pausas automáticamente.
       </Text>
 
       <TextInput
